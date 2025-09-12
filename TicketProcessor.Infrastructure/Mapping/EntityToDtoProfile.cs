@@ -13,13 +13,6 @@ public class EntityToDtoProfile : Profile
         CreateMap<EventTicketType, EventTicketTypeDto>();
         CreateMap<Reservation, ReservationDto>();
 
-// // Reverse maps if you plan to accept DTOs on input
-//         CreateMap<VenueDto, Venue>();
-//         CreateMap<EventDto, Event>();
-//         CreateMap<TicketTypeDto, TicketType>();
-//         CreateMap<EventTicketTypeDto, EventTicketType>();
-//         CreateMap<ReservationDto, Reservation>();
-
         CreateMap<VenueDto, Venue>()
             .ForMember(d => d.Created, o => o.Ignore())
             .ForMember(d => d.CreatedBy, o => o.Ignore())
