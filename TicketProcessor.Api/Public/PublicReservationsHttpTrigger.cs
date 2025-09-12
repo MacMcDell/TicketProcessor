@@ -59,74 +59,41 @@ public class PublicReservationsHttpTrigger
     }
 
     // GET /reservations/{id}
+    //todo return reservation details
     [Function("GetReservationDetails")]
     public async Task<HttpResponseData> GetReservationDetails(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "v1/reservations/{reservationId}")] HttpRequestData req,
         string reservationId)
     {
         _logger.LogInformation($"Getting details for reservation ID: {reservationId}");
+        return req.CreateResponse(HttpStatusCode.OK);
 
-        // --- Your logic to fetch reservation details from a database/service ---
-
-        // For demonstration purposes:
-        bool reservationFound = true; // Replace with actual check
-        if (!reservationFound)
-        {
-            return req.CreateResponse(HttpStatusCode.NotFound);
-        }
-
-        var reservationDetails = new
-        {
-            reservationId = reservationId,
-            eventId = "sample-event-123", // Example event ID
-            customerRef = "customer-abc-123",
-            status = "PendingPayment", // e.g., PendingPayment, Confirmed, Cancelled, Expired
-            items = new[]
-            {
-                new { ticketTypeId = "type-a", quantity = 2 },
-                new { ticketTypeId = "type-b", quantity = 1 }
-            },
-            reservationTimeUtc = DateTime.UtcNow.AddHours(-1),
-            holdsUntilUtc = DateTime.UtcNow.AddMinutes(5)
-        };
-
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        response.Headers.Add("Content-Type", "application/json");
-        await response.WriteStringAsync(JsonSerializer.Serialize(reservationDetails));
-        return response;
     }
 
-    //todo need to imlement.
     [Function("CancelReservation")]
+    [OpenApiOperation(nameof(CancelReservation))]
+    [OpenApiParameter("reservationId", Required = true, Description = "the reservation id of the reservation to cancel")]
     public async Task<HttpResponseData> CancelReservation(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/reservations/{reservationId}/cancel")] HttpRequestData req,
-        string reservationId)
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/reservations/{reservationId}/cancel")] HttpRequestData req, string reservationId, CancellationToken ct = default)
     {
         _logger.LogInformation($"Cancelling reservation ID: {reservationId}");
-
-        // --- Your logic to cancel the reservation ---
-        // - Mark reservation as cancelled in your database
-        // - Release held tickets
-        // - Handle refunds if applicable (not in scope of this function but conceptual)
-
-        // For demonstration purposes:
-        bool reservationExists = true; // Replace with actual check
-        if (!reservationExists)
+        var reservationIsGuid = Guid.TryParse(reservationId, out var reservationGuid);
+       
+        if (!reservationIsGuid) 
+            return await req.BadRequestEnvelope("ReservationId required.", ct: ct);
+        try
         {
-            return req.CreateResponse(HttpStatusCode.NotFound);
+            await _eventService.DeleteReservationAsync(reservationGuid,ct);
+            return await req.OkEnvelope("Reservation deleted.", ct: ct);
         }
-
-        bool cancelSuccessful = true; // Replace with actual cancellation logic result
-        if (cancelSuccessful)
+        catch (InvalidOperationException ex)
         {
-            return req.CreateResponse(HttpStatusCode.NoContent); // 204 No Content for successful cancellation
+            return await req.BadRequestEnvelope(ex.Message, ct: ct);
         }
-        else
+        catch (Exception ex)
         {
-            // Handle cases where cancellation might fail (e.g., already confirmed, invalid state)
-            var errorResponse = req.CreateResponse(HttpStatusCode.Conflict); // Or another appropriate error
-            await errorResponse.WriteStringAsync("Reservation could not be cancelled in its current state.");
-            return errorResponse;
+            _logger.LogError(ex, "Unexpected error creating reservation");
+            return await req.ServerErrorEnvelope("Unexpected error.", ct: ct);
         }
     }
 }

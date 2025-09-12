@@ -27,7 +27,14 @@ public sealed class ReservationRepository : IReservationRepository
     public Task<ReservationDto?> GetByIdAsync(Guid id, CancellationToken ct)
         => _db.Reservations.AsNoTracking()
             .Where(r => r.Id == id)
-            .Select(r => new ReservationDto(r.Id, r.EventTicketTypeId, r.Quantity, r.Status, r.ExpiresAt, r.IdempotencyKey))
+            .Select(r => new ReservationDto{
+                Id = r.Id, 
+                EventTicketTypeId = r.EventTicketTypeId, 
+                Quantity = r.Quantity, 
+                Status = r.Status, 
+                ExpiresAt = r.ExpiresAt, 
+                IdempotencyKey = r.IdempotencyKey}
+            )
             .FirstOrDefaultAsync(ct);
 
     public Task<int> CountActivePendingAsync(Guid eventTicketTypeId, DateTimeOffset now, CancellationToken ct)
@@ -40,7 +47,15 @@ public sealed class ReservationRepository : IReservationRepository
         var r = await _db.Reservations.FirstOrDefaultAsync(x => x.Id == id, ct);
         return r is null
             ? null
-            : new ReservationDto(r.Id, r.EventTicketTypeId, r.Quantity, r.Status, r.ExpiresAt, r.IdempotencyKey);
+            : new ReservationDto
+            {
+               Id = r.Id, 
+               EventTicketTypeId = r.EventTicketTypeId, 
+               Quantity = r.Quantity, 
+               Status = r.Status, 
+               ExpiresAt = r.ExpiresAt, 
+               IdempotencyKey = r.IdempotencyKey
+            };
     }
     public async Task UpdateAsync(ReservationDto reservation, CancellationToken ct)
     {
@@ -59,5 +74,17 @@ public sealed class ReservationRepository : IReservationRepository
         _db.Entry(e).Property(x => x.Status).IsModified = true;
         _db.Entry(e).Property(x => x.ExpiresAt).IsModified = true;
        
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct)
+    {
+        var recordToDelete = await _db.Reservations.FirstOrDefaultAsync(x => x.Id == id, ct);
+
+        if (recordToDelete != null)
+        {
+            recordToDelete.Status = ReservationStatus.Cancelled;
+            _db.Reservations.Remove(recordToDelete);
+        }
+        
     }
 }

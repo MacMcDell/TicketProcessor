@@ -20,7 +20,7 @@ public record EventTicketTypeDto
         public Guid? Id { get; init; }
         public Guid EventId { get; set; }
         public int Capacity { get; init; }
-        public int Sold { get; init; }
+        public int Sold { get; set; }
         public string Name { get; init; } = default!;
         public decimal Price { get; init; }
     }
@@ -33,5 +33,13 @@ public record AddEventTicketTypeDto
         public string Name { get; init; } = default!;
         public decimal Price { get; init; }
     }
-    
-    public record ReservationDto(Guid Id, Guid EventTicketTypeId, int Quantity, ReservationStatus Status, DateTimeOffset ExpiresAt, string? IdempotencyKey);
+
+public record ReservationDto
+{
+public Guid Id { get;set; }
+public Guid EventTicketTypeId { get;set; }
+public int Quantity { get;set; }
+public ReservationStatus Status { get;set; }
+public DateTimeOffset ExpiresAt { get;set; }
+public string? IdempotencyKey { get;init; }
+};

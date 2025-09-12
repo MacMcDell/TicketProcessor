@@ -11,4 +11,5 @@ public interface IEventService
     Task<Request.PurchaseResultDto> PurchaseAsync(Request.PurchaseRequestDto request, CancellationToken ct = default);
     Task<EventTicketTypeDto> UpsertTicketAsync(EventTicketTypeDto input, CancellationToken ct);
     Task<EventDto> UpdateEventAsync(EventDto input, CancellationToken ct);
+    Task DeleteReservationAsync(Guid reservationId, CancellationToken ct);
 }

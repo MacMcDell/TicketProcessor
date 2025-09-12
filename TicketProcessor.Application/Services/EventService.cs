@@ -123,6 +123,33 @@ public sealed class EventService : IEventService
         
     }
 
+    public async Task DeleteReservationAsync(Guid reservationId, CancellationToken ct)
+    {
+        var res = await _reservations.GetByIdAsync(reservationId, ct);
+        if (res is null)
+            throw new InvalidOperationException($"Reservation {reservationId} not found.");
+        
+        var ett = await _eventTicketTypes.GetByIdAsync(res.EventTicketTypeId, ct);
+        if(ett is null)
+            throw new InvalidOperationException($"Event ticket type {res.EventTicketTypeId} not found.");
+        
+        if (res.Status != ReservationStatus.Confirmed)
+        {
+            await _reservations.DeleteAsync(reservationId, ct);
+            //todo update ett.available
+        }
+
+        if (res.Status == ReservationStatus.Confirmed)
+        {
+            //rollback the sold tickets.
+            await _eventTicketTypes.IncrementSoldAsync(res.EventTicketTypeId, -res.Quantity, ct);
+            await _reservations.DeleteAsync(reservationId, ct);
+        }
+        
+        await _uow.SaveChangesAsync(ct);
+        
+    }
+
     public async Task<Request.PagedResult<Request.EventListItemDto>> GetEventsListAsync(Request.PublicEventsQuery query, CancellationToken ct = default)
         => await _events.GetEventsAsync(query, ct);
 
@@ -166,14 +193,14 @@ public sealed class EventService : IEventService
 
         // Create reservation row (Pending)
         var expires = now.Add(ttl);
-        var dto = new ReservationDto(
-            Id: reservationId,
-            EventTicketTypeId: ett.Id!.Value,
-            Quantity: request.Quantity,
-            Status: ReservationStatus.Pending,
-            ExpiresAt: expires,
-            IdempotencyKey: request.IdempotencyKey
-        );
+        var dto = new ReservationDto{
+            Id = reservationId,
+            EventTicketTypeId = ett.Id!.Value,
+            Quantity = request.Quantity,
+            Status = ReservationStatus.Pending,
+            ExpiresAt = expires,
+            IdempotencyKey = request.IdempotencyKey
+        };
 
         await _reservations.AddAsync(dto, ct);
         await _uow.SaveChangesAsync(ct);
@@ -192,7 +219,12 @@ public sealed class EventService : IEventService
 
         var now = DateTimeOffset.UtcNow;
         if (res.ExpiresAt <= now)
+        {
+            res.Status = ReservationStatus.Expired;
+            await _reservations.UpdateAsync(res, ct);
+            await _uow.SaveChangesAsync(ct);
             throw new InvalidOperationException("Reservation has expired.");
+        }
 
         // 2) Load EventTicketType to compute price
         var ett = await _eventTicketTypes.GetByIdAsync(res.EventTicketTypeId, ct)
@@ -216,7 +248,6 @@ public sealed class EventService : IEventService
             ExpiresAt = now // collapse hold
         };
         await _reservations.UpdateAsync(confirmed, ct);
-
         await _uow.SaveChangesAsync(ct);
 
         return new Request.PurchaseResultDto(

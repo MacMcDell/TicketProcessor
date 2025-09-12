@@ -9,4 +9,5 @@ public interface IReservationRepository
     Task<int> CountActivePendingAsync(Guid eventTicketTypeId, DateTimeOffset now, CancellationToken ct);
     Task<ReservationDto?> GetByIdForUpdateAsync(Guid id, CancellationToken ct); // tracked for updates
     Task UpdateAsync(ReservationDto reservation, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
 }
