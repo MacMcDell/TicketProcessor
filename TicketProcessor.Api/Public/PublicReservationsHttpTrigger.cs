@@ -1,12 +1,11 @@
 ﻿using System.Net;
-using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
 using TicketProcessor.Api.Helpers;
 using TicketProcessor.Application.Interfaces;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 namespace TicketProcessor.Api.Public;
 
@@ -22,18 +21,18 @@ public class PublicReservationsHttpTrigger
     }
     
     // POST /events/{id}/reservations
-    [OpenApiOperation(nameof(CreateReservation))]
-    [OpenApiRequestBody("application/json", typeof(Request.CreateReservationRequestDto), Description = "The reservation to create")]
+    [OpenApiOperation(nameof(CreateReservation), tags: ["Reservations"])]
+    [OpenApiRequestBody("application/json", typeof(CreateReservationRequestDto), Description = "The reservation to create")]
     [Function("Public_CreateReservation")]
     public async Task<HttpResponseData> CreateReservation(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "v1/reservations")] HttpRequestData req,
         FunctionContext ctx,
         CancellationToken ct)
     {
-        Request.CreateReservationRequestDto? input;
+        CreateReservationRequestDto? input;
         try
         {
-            input = await req.ReadFromJsonAsync<Request.CreateReservationRequestDto>(ct);
+            input = await req.ReadFromJsonAsync<CreateReservationRequestDto>(ct);
             if (input is null) return await req.BadRequestEnvelope("Body is required.", ct: ct);
         }
         catch
@@ -71,7 +70,7 @@ public class PublicReservationsHttpTrigger
     }
 
     [Function("CancelReservation")]
-    [OpenApiOperation(nameof(CancelReservation))]
+    [OpenApiOperation(nameof(CancelReservation), tags:["Reservations"])]
     [OpenApiParameter("reservationId", Required = true, Description = "the reservation id of the reservation to cancel")]
     public async Task<HttpResponseData> CancelReservation(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/reservations/{reservationId}/cancel")] HttpRequestData req, string reservationId, CancellationToken ct = default)

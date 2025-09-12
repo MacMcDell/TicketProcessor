@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 namespace TicketProcessor.Application.Validation;
 
-public class CreateEventValidation : AbstractValidator<Request.CreateEventDto>
+public class CreateEventValidation : AbstractValidator<CreateEventDto>
 {
     public CreateEventValidation()
     {

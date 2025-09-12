@@ -2,8 +2,6 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using TicketProcessor.Application.Interfaces;
 using TicketProcessor.Domain;
-using TicketProcessor.Domain.Dto;
-using TicketProcessor.Domain.Requests;
 
 namespace TicketProcessor.Infrastructure.Repositories;
 
@@ -21,7 +19,7 @@ public sealed class EventRepository : IEventRepository
         return entity.Id;
     }
 
-    public async Task<Request.PagedResult<Request.EventListItemDto>> GetEventsAsync(Request.PublicEventsQuery q, CancellationToken ct)
+    public async Task<PagedResult<EventListItemDto>> GetEventsAsync(PublicEventsQuery q, CancellationToken ct)
     {
         var from = q.From ?? DateTimeOffset.UtcNow;
         var to = q.To;
@@ -47,7 +45,7 @@ public sealed class EventRepository : IEventRepository
             .OrderBy(x => x.e.StartsAt)
             .Skip(skip)
             .Take(size)
-            .Select(x => new Request.EventListItemDto(
+            .Select(x => new EventListItemDto(
                 x.e.Id,
                 x.e.Title,
                 x.e.StartsAt,
@@ -56,7 +54,7 @@ public sealed class EventRepository : IEventRepository
                 (from ett in _db.EventTicketTypes.AsNoTracking()
                     where ett.EventId == x.e.Id
                     orderby ett.Price
-                    select new Request.TicketTypeAvailabilityDto(
+                    select new TicketTypeAvailabilityDto(
                         ett.Id,
                         ett.Name,
                         ett.Price,
@@ -67,7 +65,7 @@ public sealed class EventRepository : IEventRepository
             ))
             .ToListAsync(ct);
 
-        return new Request.PagedResult<Request.EventListItemDto>(items, total);
+        return new PagedResult<EventListItemDto>(items, total);
     }
 
     public async Task<EventDto?> GetByIdAsync(Guid id, CancellationToken ct) =>  await _db.Events.AsNoTracking()
@@ -87,5 +85,17 @@ public sealed class EventRepository : IEventRepository
         _db.Attach(entity);
         _db.Entry(entity).Property(x => x.Title).IsModified = true;
         _db.Entry(entity).Property(x => x.StartsAt).IsModified = true;
+    }
+
+    public async Task DeleteAsync(Guid eventId, CancellationToken ct)
+    {
+        var entity = await _db.Events.FirstOrDefaultAsync(x => x.Id == eventId, ct)
+                     ?? throw new InvalidOperationException("Event not found.");
+        var ticketsSold = await _db.Reservations.AnyAsync(x => x.EventTicketTypeId == eventId && x.Status == ReservationStatus.Confirmed, ct);
+        
+        if(ticketsSold)
+            throw new InvalidOperationException("Cannot delete event with tickets sold.");
+        
+        _db.Events.Remove(entity);
     }
 }

@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using TicketProcessor.Domain;
-using TicketProcessor.Domain.Dto;
 
 namespace TicketProcessor.Infrastructure.Mapping;
 
@@ -11,7 +10,7 @@ public class EntityToDtoProfile : Profile
         CreateMap<Venue, VenueDto>();
         CreateMap<Event, EventDto>();
         CreateMap<EventTicketType, EventTicketTypeDto>();
-        CreateMap<Reservation, ReservationDto>();
+        CreateMap<Reservation, ReservationResponseDto>();
 
         CreateMap<VenueDto, Venue>()
             .ForMember(d => d.Created, o => o.Ignore())
@@ -37,7 +36,7 @@ public class EntityToDtoProfile : Profile
             .ForMember(d => d.LastModifiedBy, o => o.Ignore())
             .ForMember(d => d.IsDeleted, o => o.Ignore());
 
-        CreateMap<ReservationDto, Reservation>()
+        CreateMap<ReservationResponseDto, Reservation>()
             .ForMember(d => d.EventTicketType, o => o.Ignore())
             .ForMember(d => d.Created, o => o.Ignore())
             .ForMember(d => d.CreatedBy, o => o.Ignore())

@@ -2,7 +2,6 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using TicketProcessor.Application.Interfaces;
 using TicketProcessor.Domain;
-using TicketProcessor.Domain.Dto;
 
 namespace TicketProcessor.Infrastructure.Repositories;
 
@@ -67,11 +66,8 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
 
     }
 
-    public async Task IncrementSoldAsync(Guid eventTicketTypeId, int qty, CancellationToken ct)
+    public async Task AdjustIncrementSold(Guid eventTicketTypeId, int qty, CancellationToken ct)
     {
-        // Let DbContext save in the surrounding UoW transaction.
-        // DbUpdateConcurrencyException will be thrown by SaveChanges if xmin changed.
-        // Track + update; xmin shadow column protects from stale updates
         var eventTicket = await _db.EventTicketTypes.FirstOrDefaultAsync(x => x.Id == eventTicketTypeId, ct)
                           ?? throw new InvalidOperationException("Event ticket type not found.");
 
@@ -81,5 +77,16 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
 
         eventTicket.Sold += qty;
 
+    }
+
+    public async Task DeleteAsync(Guid eventTicketTypeId, CancellationToken ct)
+    {
+        var eventTicket = await _db.EventTicketTypes.FirstOrDefaultAsync(x => x.Id == eventTicketTypeId, ct)
+                          ?? throw new InvalidOperationException("Event ticket type not found.");
+        var ticketsSold = await _db.Reservations.AnyAsync(x => x.EventTicketTypeId == eventTicketTypeId && x.Status == ReservationStatus.Confirmed, ct);
+        if (ticketsSold)
+            throw new InvalidOperationException("Cannot delete event ticket type with tickets sold.");
+        
+        _db.EventTicketTypes.Remove(eventTicket);
     }
 }

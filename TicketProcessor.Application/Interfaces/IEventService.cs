@@ -1,15 +1,16 @@
-﻿using TicketProcessor.Domain.Dto;
-using TicketProcessor.Domain.Requests;
+﻿using TicketProcessor.Domain;
 
 namespace TicketProcessor.Application.Interfaces;
 
 public interface IEventService
 {
-    Task<EventDto> CreateEventAsync(Request.CreateEventDto request, CancellationToken ct = default);
-    Task<Request.PagedResult<Request.EventListItemDto>> GetEventsListAsync(Request.PublicEventsQuery query, CancellationToken ct = default);
-    Task<Request.CreateReservationResultDto> CreateReservationAsync(Request.CreateReservationRequestDto request, CancellationToken ct = default);
-    Task<Request.PurchaseResultDto> PurchaseAsync(Request.PurchaseRequestDto request, CancellationToken ct = default);
-    Task<EventTicketTypeDto> UpsertTicketAsync(EventTicketTypeDto input, CancellationToken ct);
-    Task<EventDto> UpdateEventAsync(EventDto input, CancellationToken ct);
-    Task DeleteReservationAsync(Guid reservationId, CancellationToken ct);
+    Task<EventDto> CreateEventAsync(CreateEventDto request, CancellationToken ct = default);
+    Task<PagedResult<EventListItemDto>> GetEventsListAsync(PublicEventsQuery query, CancellationToken ct = default);
+    Task<CreateReservationResultDto> CreateReservationAsync(CreateReservationRequestDto request, CancellationToken ct = default);
+    Task<PurchaseResultDto> PurchaseAsync(PurchaseRequestDto request, CancellationToken ct = default);
+    Task<EventTicketTypeDto> UpsertTicketAsync(EventTicketTypeDto input, CancellationToken ct = default);
+    Task<EventDto> UpdateEventAsync(EventDto input, CancellationToken ct = default);
+    Task DeleteReservationAsync(Guid reservationId, CancellationToken ct = default);
+    Task DeleteEventAsync(Guid eventId, CancellationToken ct = default);
+    Task DeleteTicketAsync(Guid eventTicketTypeId, CancellationToken ct = default);
 }

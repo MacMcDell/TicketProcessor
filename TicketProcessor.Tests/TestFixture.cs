@@ -14,17 +14,17 @@ namespace TicketProcessor.Tests;
 
 public sealed class TestFixture : IAsyncDisposable
 {
-    NullLogger<EventService> _logger = new NullLogger<EventService>();
+    public NullLogger<EventService> _logger = new NullLogger<EventService>();
     public TicketingDbContext Db { get; }
-    private IMapper Mapper { get; }
+    public IMapper Mapper { get; }
 
     // Concrete EF repos + UoW
-    private IVenueRepository Venues { get; }
-    private IReservationRepository Reservations { get; set; }
-    private IEventRepository Events { get; }
-    private IPaymentGateway PaymentGateway { get; }
-    private IEventTicketTypeRepository EventTicketTypes { get; }
-    private IUnitOfWork Uow { get; }
+    public IVenueRepository Venues { get; }
+    public IReservationRepository Reservations { get; set; }
+    public IEventRepository Events { get; }
+    public IPaymentGateway PaymentGateway { get; }
+    public IEventTicketTypeRepository EventTicketTypes { get; }
+    public IUnitOfWork Uow { get; }
 
     private HttpClient _client = new HttpClient();
 
@@ -32,8 +32,10 @@ public sealed class TestFixture : IAsyncDisposable
 
     public IEventService EventService { get; }
 
-    public TestFixture(string dbName)
+    // Modify constructor to generate dbName internally
+    public TestFixture()
     {
+        var dbName = Guid.NewGuid().ToString(); // Generate a unique name for the in-memory database
         // InMemory DbContext
         var options = new DbContextOptionsBuilder<TicketingDbContext>()
             .UseInMemoryDatabase(databaseName: dbName)

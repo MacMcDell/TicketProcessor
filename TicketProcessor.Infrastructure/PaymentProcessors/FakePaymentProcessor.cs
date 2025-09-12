@@ -1,5 +1,5 @@
 ﻿using TicketProcessor.Application.Interfaces;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 namespace TicketProcessor.Infrastructure.PaymentProcessors;
 
@@ -11,7 +11,7 @@ public class FakePaymentProcessor : IPaymentGateway
     {
         _client = client;
     }
-    public async Task<string> ChargeAsync(Request.PaymentProcessorRequestDto payload, CancellationToken ct)
+    public async Task<string> ChargeAsync(PaymentProcessorRequestDto payload, CancellationToken ct)
     {
         using var res = await _client.PostAsJsonAsync("https://httpbin.org/post", payload, ct);
         if (!res.IsSuccessStatusCode)

@@ -12,7 +12,7 @@ using StackExchange.Redis;
 using TicketProcessor.Application.Interfaces;
 using TicketProcessor.Application.Services;
 using TicketProcessor.Application.Validation;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 using TicketProcessor.Infrastructure;
 using TicketProcessor.Infrastructure.IDempotency;
 using TicketProcessor.Infrastructure.Mapping;
@@ -87,6 +87,6 @@ void AddApplication(IServiceCollection services)
 
 void AddValidation(IServiceCollection services)
 {
-    services.AddScoped<IValidator<Request.CreateEventDto>, CreateEventValidation>();
-    services.AddScoped<IValidator<Request.CreateVenueDto>, CreateVenueValidation>();
+    services.AddScoped<IValidator<CreateEventDto>, CreateEventValidation>();
+    services.AddScoped<IValidator<VenueDto>, CreateVenueValidation>();
 }

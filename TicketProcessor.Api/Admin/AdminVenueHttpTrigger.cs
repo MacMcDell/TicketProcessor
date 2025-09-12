@@ -1,14 +1,14 @@
 ﻿using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
 using TicketProcessor.Api.Helpers;
 using TicketProcessor.Application.Interfaces;
-using TicketProcessor.Domain.Dto;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 
 namespace TicketProcessor.Api.Admin;
@@ -18,26 +18,47 @@ public class AdminVenueHttpTrigger
 {
     private readonly ILogger<AdminVenueHttpTrigger> _logger;
     private readonly IVenueService _venueService;
-    private readonly IValidator<Request.CreateVenueDto> _validator;
+    private readonly IValidator<VenueDto> _validator;
 
-    public AdminVenueHttpTrigger(ILogger<AdminVenueHttpTrigger> logger, IVenueService venueService, IValidator<Request.CreateVenueDto> validator)
+    public AdminVenueHttpTrigger(ILogger<AdminVenueHttpTrigger> logger, IVenueService venueService, IValidator<VenueDto> validator)
     {
         _logger = logger;
         _venueService = venueService;
         _validator = validator;
     }
     
-    [OpenApiOperation(nameof(CreateVenue))]
-    [OpenApiRequestBody("application/json", typeof(Request.CreateVenueDto), Description = "The venue to create")]
+    
+    
+    [OpenApiOperation(nameof(GetVenues), tags: new[] { "Venues" })]
+    [Function(nameof(GetVenues))]
+    public async Task<HttpResponseData> GetVenues(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "v1/venues")] HttpRequestData req, CancellationToken ct)
+    {
+        _logger.LogInformation("Getting all venues.");
+
+        try
+        {
+            var venues = await _venueService.GetVenuesAsync(ct);
+            return await req.OkEnvelope(venues, "Venues retrieved successfully.", ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving venues");
+            return await req.ServerErrorEnvelope("Unexpected error.", ct: ct);
+        }
+    }
+
+    [OpenApiOperation(nameof(CreateVenue), tags: new[] { "Venues" })]
+    [OpenApiRequestBody("application/json", typeof(VenueDto), Description = "The venue to create")]
     [Function(nameof(CreateVenue))]
     public async Task<HttpResponseData> CreateVenue(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/admin/venues")] HttpRequestData req, CancellationToken ct)
     {
         _logger.LogInformation("Creating a new venue.");
-        Request.CreateVenueDto? input;
+        VenueDto? input;
         try
         {
-            input = await req.ReadFromJsonAsync<Request.CreateVenueDto>( ct);
+            input = await req.ReadFromJsonAsync<VenueDto>( ct);
             if (input is null)
                 return await req.BadRequestEnvelope("Body is required.", ct: ct);
         }
@@ -77,7 +98,7 @@ public class AdminVenueHttpTrigger
     }
 
     // PUT /events/{id} — update event metadata (with If-Match ETag)
-    [OpenApiOperation(nameof(UpdateVenue))]
+    [OpenApiOperation(nameof(UpdateVenue),tags: ["Venues"])]
     [OpenApiRequestBody("application/json", typeof(VenueDto), Description = "The venue to create")]
     [Function("UpdateVenue")]
     public async Task<HttpResponseData> UpdateVenue(
@@ -106,6 +127,33 @@ public class AdminVenueHttpTrigger
         }
     }
 
-  
+    [OpenApiOperation(nameof(DeleteVenue), tags: ["Venues"])]
+    [OpenApiParameter("id", Required = true, Description = "The venue id to delete")]
+    [Function("DeleteVenue")]
+    public async Task<HttpResponseData> DeleteVenue(
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/admin/venues/{id}")] HttpRequestData req,
+        string id,
+        CancellationToken ct)
+    {
+        _logger.LogInformation($"Deleting venue with ID: {id}");
+
+        if (!Guid.TryParse(id, out var venueId))
+            return await req.BadRequestEnvelope("Invalid venue ID format.", ct: ct);
+
+        try
+        {
+            await _venueService.DeleteVenueAsync(venueId, ct);
+            return await req.OkEnvelope("Venue deleted successfully.", ct: ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return await req.BadRequestEnvelope(ex.Message, ct: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while deleting venue");
+            return await req.ServerErrorEnvelope("Unexpected error.", ct: ct);
+        }
+    }
 
 }

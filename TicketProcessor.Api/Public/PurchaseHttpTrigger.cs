@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.EntityFrameworkCore;
 using TicketProcessor.Api.Helpers;
 using TicketProcessor.Application.Interfaces;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 namespace TicketProcessor.Api.Public;
 
@@ -26,17 +26,17 @@ public class PublicPurchaseHttpTrigger
     }
 
     // POST /purchases
-    [OpenApiOperation(nameof(PurchaseTickets))]
-    [OpenApiRequestBody("application/json", typeof(Request.PurchaseRequestDto), Description = "The purchase to process")]
+    [OpenApiOperation(nameof(PurchaseTickets), tags: ["Purchases"])]
+    [OpenApiRequestBody("application/json", typeof(PurchaseRequestDto), Description = "The purchase to process")]
     [Function("PurchaseTickets")]
     public async Task<HttpResponseData> PurchaseTickets(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/purchases")] HttpRequestData req, CancellationToken ct = default)
     {
         _logger.LogInformation("Attempting to process ticket purchase.");
-        Request.PurchaseRequestDto? input;
+        PurchaseRequestDto? input;
         try
         {
-            input = await req.ReadFromJsonAsync<Request.PurchaseRequestDto>(ct);
+            input = await req.ReadFromJsonAsync<PurchaseRequestDto>(ct);
             if (input is null) return await req.BadRequestEnvelope("Body is required.", ct: ct);
         }
         catch

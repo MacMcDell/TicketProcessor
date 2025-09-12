@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -9,8 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TicketProcessor.Api.Helpers;
 using TicketProcessor.Application.Interfaces;
-using TicketProcessor.Domain.Dto;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 namespace TicketProcessor.Api.Admin;
 
@@ -19,10 +19,10 @@ public class AdminEventsHttpTrigger
 {
     private readonly ILogger<AdminEventsHttpTrigger> _logger;
     private readonly IEventService _eventService;
-    private readonly IValidator<Request.CreateEventDto> _validator;
+    private readonly IValidator<CreateEventDto> _validator;
 
     //todo add jsonSerializerOptions to program.cs
-    public AdminEventsHttpTrigger(ILogger<AdminEventsHttpTrigger> logger, IEventService eventService, IValidator<Request.CreateEventDto> validator)
+    public AdminEventsHttpTrigger(ILogger<AdminEventsHttpTrigger> logger, IEventService eventService, IValidator<CreateEventDto> validator)
     {
         _logger = logger;
         _eventService = eventService;
@@ -31,18 +31,18 @@ public class AdminEventsHttpTrigger
 
     // POST /events — create event (+ ticket types)
    
-    [OpenApiOperation(nameof(CreateEvent))]
-    [OpenApiRequestBody("application/json", typeof(Request.CreateEventDto), Description = "The event to create - use venue name and capacity to create new venue. " +
+    [OpenApiOperation(nameof(CreateEvent),tags: ["Events"] )]
+    [OpenApiRequestBody("application/json", typeof(CreateEventDto), Description = "The event to create - use venue name and capacity to create new venue. " +
         "Use Id to use same venue")]
     [Function("CreateEvent")]
     public async Task<HttpResponseData> CreateEvent(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/admin/events")] HttpRequestData req,  CancellationToken ct)
     {
         _logger.LogInformation("Creating a new event.");
-        Request.CreateEventDto? input;
+        CreateEventDto? input;
         try
         {
-            input = await req.ReadFromJsonAsync<Request.CreateEventDto>( ct);
+            input = await req.ReadFromJsonAsync<CreateEventDto>( ct);
             if (input is null)
                 return await req.BadRequestEnvelope("Body is required.", ct: ct);
         }
@@ -80,13 +80,12 @@ public class AdminEventsHttpTrigger
         }
     }
     
-    
-    [OpenApiOperation(nameof(UpdateEvent))]
+    [OpenApiOperation(nameof(UpdateEvent),tags: ["Events"] )]
     [OpenApiRequestBody("application/json", typeof(EventDto), Description = "The event to update")]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(EventDto), Description = "The updated event")]
     [Function(nameof(UpdateEvent))]
     public async Task<HttpResponseData> UpdateEvent(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "v1/admin/events/{eventId}")] HttpRequestData req, CancellationToken ct)
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "v1/admin/events")] HttpRequestData req, CancellationToken ct)
     {
         EventDto? input; 
         input = await req.ReadFromJsonAsync<EventDto>( ct);
@@ -108,66 +107,35 @@ public class AdminEventsHttpTrigger
             return await req.ServerErrorEnvelope($"Unexpected error. ",[ex.Message], ct: ct);
         }
     }
-
-
-    [OpenApiOperation(nameof(CreateTicketType))]
-    [OpenApiRequestBody("application/json", typeof(AddEventTicketTypeDto), Description = "The ticket types to add/update")]
-    [Function(nameof(CreateTicketType))]
-    public async Task<HttpResponseData> CreateTicketType(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/admin/tickets")]
-        HttpRequestData req, string eventId, CancellationToken ct = default)
+    
+    [OpenApiOperation(nameof(DeleteEvent), tags: ["Events"])]
+    [OpenApiParameter("eventId", Required = true, Description = "The ID of the event to delete")]
+    [Function(nameof(DeleteEvent))]
+    public async Task<HttpResponseData> DeleteEvent(
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/admin/events/{eventId}")] HttpRequestData req,
+        string eventId,
+        CancellationToken ct)
     {
+        var eventIsGuid = Guid.TryParse(eventId, out var eventGuid);
+        if (!eventIsGuid)
+            return await req.BadRequestEnvelope("Invalid event ID format.", ct: ct);
+
         try
         {
-        _logger.LogInformation("Creating a new ticket type for an event.");
-        EventTicketTypeDto? input; 
-        input = await req.ReadFromJsonAsync<EventTicketTypeDto>( ct);
-        
-        if (input is null)
-            return await req.BadRequestEnvelope("Body is required.", ct: ct);
-        
-        var result = await _eventService.UpsertTicketAsync(input, ct); 
-        
-        if(result is null) 
-            return await req.BadRequestEnvelope("Ticket type not found.", ct: ct);
-        
-        return await req.OkEnvelope(result, $"Created ticket type for event. {result.EventId}", ct: ct);
+            await _eventService.DeleteEventAsync(eventGuid, ct);
+            return await req.OkEnvelope("Event deleted successfully.", ct: ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return await req.BadRequestEnvelope(ex.Message, ct: ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error while creating event");
+            _logger.LogError(ex, "Unexpected error while deleting event");
             return await req.ServerErrorEnvelope("Unexpected error.", ct: ct);
         }
     }
-   
 
-
-    [OpenApiOperation(nameof(UpdateTicketTypes))]
-    [OpenApiRequestBody("application/json", typeof(EventTicketTypeDto), Description = "The ticket types to add/update")]
-    [Function(nameof(UpdateTicketTypes))]
-    public async Task<HttpResponseData> UpdateTicketTypes(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "v1/admin/tickets")] HttpRequestData req, string eventId, CancellationToken ct = default)
-    {
-        try
-        {
-            EventTicketTypeDto? input;
-            input = await req.ReadFromJsonAsync<EventTicketTypeDto>(ct);
-
-            if (input is null)
-                return await req.BadRequestEnvelope("Body is required.", ct: ct);
-            
-            var result = await _eventService.UpsertTicketAsync(input, ct);
-
-            if (result is null)
-                return await req.BadRequestEnvelope("Ticket type not found.", ct: ct);
-
-            return await req.OkEnvelope(result, $"Updated ticket type for event {result.EventId}.", ct: ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error while updating event");
-            return await req.ServerErrorEnvelope($"Unexpected error. ",[ex.Message], ct: ct);
-        }
-
-    }
+    
+    
 }

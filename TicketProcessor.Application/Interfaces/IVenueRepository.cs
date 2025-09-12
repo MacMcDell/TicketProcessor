@@ -1,5 +1,4 @@
 ﻿using TicketProcessor.Domain;
-using TicketProcessor.Domain.Dto;
 
 namespace TicketProcessor.Application.Interfaces;
 
@@ -9,6 +8,8 @@ public interface IVenueRepository : IBasicLookup
     Task<VenueDto?> GetAsync(Guid id, CancellationToken ct);
     Task<Guid> AddAsync(VenueDto venue, CancellationToken ct); // returns new
     Task UpdateAsync(VenueDto existingVenue, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
+    Task<List<VenueDto>> GetVenuesAsync(CancellationToken ct);
 
 }
 

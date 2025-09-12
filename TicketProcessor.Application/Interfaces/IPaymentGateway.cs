@@ -1,8 +1,8 @@
-﻿using TicketProcessor.Domain.Requests;
+﻿using TicketProcessor.Domain;
 
 namespace TicketProcessor.Application.Interfaces;
 
 public interface IPaymentGateway
 {
-    Task<string> ChargeAsync(Request.PaymentProcessorRequestDto payload, CancellationToken ct);
+    Task<string> ChargeAsync(PaymentProcessorRequestDto payload, CancellationToken ct);
 }

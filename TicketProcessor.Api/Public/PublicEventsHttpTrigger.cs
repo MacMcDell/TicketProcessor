@@ -6,7 +6,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using TicketProcessor.Api.Helpers;
 using TicketProcessor.Application.Interfaces;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 namespace TicketProcessor.Api.Public;
 
@@ -22,7 +22,7 @@ public class PublicEventsHttpTrigger
     }
 
     // GET /events — list upcoming
-    [OpenApiOperation(nameof(ListUpcomingEvents))]
+    [OpenApiOperation(nameof(ListUpcomingEvents), tags:["Events"])]
     [Function(nameof(ListUpcomingEvents))]
     public async Task<HttpResponseData> ListUpcomingEvents(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "V1/events")] HttpRequestData req, CancellationToken ct = default)
@@ -37,7 +37,7 @@ public class PublicEventsHttpTrigger
         int page             = int.TryParse(qp["page"], out var p) ? Math.Max(1, p) : 1;
         int pageSize         = int.TryParse(qp["pageSize"], out var s) ? Math.Clamp(s, 1, 100) : 20;
 
-        var query = new Request.PublicEventsQuery(from, to, venueId, search, page, pageSize);
+        var query = new PublicEventsQuery(from, to, venueId, search, page, pageSize);
 
         try
         {
@@ -56,6 +56,7 @@ public class PublicEventsHttpTrigger
     }
 
 
+    //todo - add more details to the event details
     // GET /events/{id} — include ticket types + availability snapshot
     [Function("GetEventDetails")]
     public async Task<HttpResponseData> GetEventDetails(

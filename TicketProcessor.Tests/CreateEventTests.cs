@@ -1,27 +1,27 @@
 ﻿using FluentAssertions;
 using TicketProcessor.Application.Validation;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 using Xunit;
 
 namespace TicketProcessor.Tests;
 
 public class CreateEventDtoTests
 {
-    private static Request.CreateEventDto BuildRequest(
+    private static CreateEventDto BuildRequest(
         string venueName,
         int venueCapacity,
         string title,
         params (string name, decimal price, int capacity)[] tickets)
     {
         var ticketDtos = tickets.Select(t =>
-            new Request.CreateEventTicketTypeDto(
+            new CreateEventTicketTypeDto(
                 Name: t.name,
                 Price: t.price,
                 Capacity: t.capacity
             )
         ).ToList();
 
-        return new Request.CreateEventDto(
+        return new CreateEventDto(
             VenueId: null,
             VenueName: venueName,
             VenueCapacity: venueCapacity,
@@ -35,7 +35,7 @@ public class CreateEventDtoTests
     [Fact]
     public async Task CreateEvent_WithSingleTicketType_WritesAllRows()
     {
-        await using var fx = new TestFixture(dbName: Guid.NewGuid().ToString("N"));
+        await using var fx = new TestFixture();
 
         var validator = new CreateEventValidation();
         var req = BuildRequest(
@@ -68,7 +68,7 @@ public class CreateEventDtoTests
     [Fact]
     public async Task CreateEvent_WithTwoTicketTypes_WritesAllRows()
     {
-        await using var fx = new TestFixture(dbName: Guid.NewGuid().ToString("N"));
+        await using var fx = new TestFixture();
 
         var validator = new CreateEventValidation();
         var req = BuildRequest(
@@ -98,14 +98,14 @@ public class CreateEventDtoTests
     public async Task CreateEvent_ValidationFails_WhenVenueMissing()
     {
         // Missing VenueId AND missing (VenueName/VenueCapacity) should fail validation
-        var req = new Request.CreateEventDto(
+        var req = new CreateEventDto(
             VenueId: null,
             VenueName: null,
             VenueCapacity: null,
             StartsAt: DateTimeOffset.UtcNow.AddDays(7),
             Title: "Bad Event",
             Description: null,
-            TicketTypes: new List<Request.CreateEventTicketTypeDto> {
+            TicketTypes: new List<CreateEventTicketTypeDto> {
                 new ("GA", 10, 100)
             }
         );

@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using TicketProcessor.Domain.Requests;
+using TicketProcessor.Domain;
 
 namespace TicketProcessor.Application.Validation;
 
-public class CreateVenueValidation : AbstractValidator<Request.CreateVenueDto>
+public class CreateVenueValidation : AbstractValidator<VenueDto>
 {
     public CreateVenueValidation()
     {
