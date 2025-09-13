@@ -107,9 +107,9 @@
     /// <summary>
     /// complete a purchase with the reservation id and payment token you got back from the payment processor.
     /// </summary>
-    /// <param name="ReservationId"></param>
-    /// <param name="PaymentToken"></param>
-    /// <param name="Currency"></param>
+    /// <param name="ReservationId">Required: To find what you are purchasing</param>
+    /// <param name="PaymentToken">Maybe you have some sort of interception here.</param>
+    /// <param name="Currency">CAD / USD</param>
     /// <param name="IdempotencyKey"></param>
     public sealed record PurchaseRequestDto(
         Guid ReservationId,
@@ -133,16 +133,17 @@
         int Quantity,
         decimal UnitPrice,
         decimal TotalAmount,
-        DateTimeOffset PurchasedAt
+        DateTimeOffset PurchasedAt,
+        string PurchaseToken
     );
 
     /// <summary>
     /// what the payment processor expects.
     /// </summary>
     /// <param name="Amount"></param>
-    /// <param name="Currency"></param>
+    /// <param name="Currency">USD / CAD etc</param>
     /// <param name="Description"></param>
-    /// <param name="PaymentToken"></param>
+    /// <param name="PaymentToken">this is not really necessary at this time.</param>
     /// <param name="IdempotencyKey"></param>
     public sealed record PaymentProcessorRequestDto(
         decimal Amount,
@@ -166,6 +167,8 @@
         public ReservationStatus Status { get; set; }
         public DateTimeOffset ExpiresAt { get; init; }
         public string? IdempotencyKey { get; init; }
+        
+        public string? PurchaseToken { get; set; }
     };
 
     /// <summary>

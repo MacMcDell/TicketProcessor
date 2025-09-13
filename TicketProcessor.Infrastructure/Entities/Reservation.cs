@@ -11,4 +11,5 @@ public class Reservation : BaseProperties
     public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
     public DateTimeOffset ExpiresAt { get; set; }
     public string? IdempotencyKey { get; set; } // can mirror Redis key for tracing
+    public string? PurchaseToken { get; set; }
 }

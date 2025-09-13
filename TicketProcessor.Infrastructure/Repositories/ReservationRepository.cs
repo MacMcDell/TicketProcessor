@@ -72,6 +72,7 @@ public sealed class ReservationRepository : IReservationRepository
         e.Status = reservationResponse.Status;
         e.ExpiresAt = reservationResponse.ExpiresAt;
         e.IdempotencyKey = reservationResponse.IdempotencyKey;
+        e.PurchaseToken = reservationResponse.PurchaseToken;
 
         _db.Attach(e);
         _db.Entry(e).Property(x => x.Status).IsModified = true;

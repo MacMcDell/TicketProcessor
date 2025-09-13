@@ -108,9 +108,6 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
 
         //todo in reals we would cache the heck out of this. 
 
-        var from = query.From ?? DateTimeOffset.UtcNow;
-        var to = query.To;
-
         var tickets = _db.EventTicketTypes.AsNoTracking()
             .Select(x => new EventTicketTypeDto
             {
@@ -121,6 +118,9 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
                 Name = x.Name,
                 Price = x.Price
             });
+        
+        //todo apply you query params here.. but we don't need to do that at the moment
+        //paging is enough right now.
 
         var total = await tickets.CountAsync(ct); //get the total items before paging.
 

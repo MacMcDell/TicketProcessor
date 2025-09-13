@@ -276,10 +276,10 @@ public sealed class EventService : IEventService
         // 3) Call payment gateway (external)
         var desc = $"Reservation {res.Id} for ETT {res.EventTicketTypeId} x{res.Quantity}";
 
-        //this is a fake payment processor.You would charge the card firt, get the token, then pass it to complete the purchase.
+        //this is a fake payment processor.You would charge the card first, get the token, then pass it to complete the purchase.
         var payload =
             new PaymentProcessorRequestDto(total, request.Currency, desc, request.PaymentToken, res.IdempotencyKey);
-        await _payments.ChargeAsync(payload, ct);
+        var purchaseToken = await _payments.ChargeAsync(payload, ct);
 
         // 4) If payment succeeds, atomically finalize: increment Sold and confirm reservation
         // We rely on DB tx + concurrency at the repo level (IncrementSoldAsync updates Sold)
@@ -287,6 +287,7 @@ public sealed class EventService : IEventService
 
         var confirmed = res with
         {
+            PurchaseToken = purchaseToken,
             Status = ReservationStatus.Confirmed,
             ExpiresAt = now // collapse hold
         };
@@ -299,7 +300,8 @@ public sealed class EventService : IEventService
             Quantity: res.Quantity,
             UnitPrice: unitPrice,
             TotalAmount: total,
-            PurchasedAt: now
+            PurchasedAt: now,
+            PurchaseToken: purchaseToken
         );
     }
 

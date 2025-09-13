@@ -7,6 +7,7 @@ using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Polly;
 using StackExchange.Redis;
 using TicketProcessor.Application.Interfaces;
 using TicketProcessor.Application.Services;
@@ -35,7 +36,7 @@ var host = new HostBuilder()
     {
         services.AddApplicationInsightsTelemetryWorkerService();
         AddInfrastructure(services, ctx.Configuration);
-        AddApplication(services);
+        AddApplication(services, ctx.Configuration);
         AddValidation(services);
         services.AddLogging();
     })
@@ -50,11 +51,15 @@ return;
 void AddInfrastructure(IServiceCollection services, IConfiguration cfg)
 {
     // EF Core (Postgres)
-    var cs = cfg.GetConnectionString("Postgres")
+    var connectionString = cfg.GetConnectionString("Postgres")
              ??
              "Host=localhost;Port=5432;Database=ticketing;Username=postgres;Password=postgres;Include Error Detail=true;";
     services.AddDbContext<TicketingDbContext>(opt =>
-        opt.UseNpgsql(cs, b => b.MigrationsAssembly(typeof(TicketingDbContext).Assembly.FullName)));
+        opt.UseNpgsql(connectionString, optionsBuilder =>
+        {
+            optionsBuilder.EnableRetryOnFailure();
+            optionsBuilder.MigrationsAssembly(typeof(TicketingDbContext).Assembly.FullName);
+        }));
 
     // Redis
     var redisConn = cfg["Redis:Connection"] ?? "localhost:6379";
@@ -63,7 +68,7 @@ void AddInfrastructure(IServiceCollection services, IConfiguration cfg)
     services.AddAutoMapper(cfg => { cfg.AddProfile<EntityToDtoProfile>(); });
 }
 
-void AddApplication(IServiceCollection services)
+void AddApplication(IServiceCollection services, IConfiguration cfg)
 {
     services.AddScoped<IVenueRepository, VenueRepository>();
     services.AddScoped<IEventRepository, EventRepository>();
@@ -74,9 +79,22 @@ void AddApplication(IServiceCollection services)
 
     services.AddScoped<IEventService, EventService>();
     services.AddScoped<IVenueService, VenueService>();
+    
+    var paymentProcessorUrl = cfg["PaymentProcessor:Url"] ?? "https://scoobydooobydoo.org"; // Fallback to a default URL
 
-    // HttpClient for payment gateway
-    services.AddHttpClient<IPaymentGateway, FakePaymentProcessor>();
+    services.AddHttpClient<IPaymentGateway, FakePaymentProcessor>(client =>
+        {
+            client.BaseAddress = new Uri(paymentProcessorUrl);
+            client.Timeout = TimeSpan.FromSeconds(10); 
+        })
+        .AddStandardResilienceHandler(options =>
+        {
+            options.Retry.MaxRetryAttempts = 3; 
+            options.Retry.Delay = TimeSpan.FromSeconds(1); 
+            options.Retry.BackoffType = DelayBackoffType.Exponential;
+            options.Retry.MaxDelay = TimeSpan.FromSeconds(5);
+        });
+
 }
 
 void AddValidation(IServiceCollection services)

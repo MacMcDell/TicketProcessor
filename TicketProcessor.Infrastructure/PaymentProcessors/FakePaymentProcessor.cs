@@ -1,4 +1,5 @@
-﻿using TicketProcessor.Application.Interfaces;
+﻿using System.Text.Json;
+using TicketProcessor.Application.Interfaces;
 using TicketProcessor.Domain;
 
 namespace TicketProcessor.Infrastructure.PaymentProcessors;
@@ -12,14 +13,32 @@ public class FakePaymentProcessor : IPaymentGateway
         _client = client;
     }
 
+    /// <summary>
+    /// returns the token of the transaction from the payload.
+    /// </summary>
+    /// <param name="payload"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public async Task<string> ChargeAsync(PaymentProcessorRequestDto payload, CancellationToken ct)
     {
-        using var res = await _client.PostAsJsonAsync("https://httpbin.org/post", payload, ct);
+        using var res = await _client.PostAsJsonAsync("post", payload, ct);
         if (!res.IsSuccessStatusCode)
             throw new InvalidOperationException($"Payment failed: {(int)res.StatusCode}");
 
         var json = await res.Content.ReadAsStringAsync(ct);
-
-        return json;
+        
+        string? paymentToken = null;
+        using (JsonDocument doc = JsonDocument.Parse(json))
+        {
+            if (doc.RootElement.TryGetProperty("headers", out JsonElement jsonProperty))
+            {
+                if (jsonProperty.TryGetProperty("Traceparent", out JsonElement paymentTokenProperty))
+                {
+                    paymentToken = paymentTokenProperty.GetString();
+                }
+            }
+        }
+        return paymentToken ?? throw new InvalidOperationException("Payment failed");
     }
 }
