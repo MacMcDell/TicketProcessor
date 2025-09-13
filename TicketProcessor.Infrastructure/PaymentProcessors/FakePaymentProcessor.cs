@@ -27,7 +27,7 @@ public class FakePaymentProcessor : IPaymentGateway
             throw new InvalidOperationException($"Payment failed: {(int)res.StatusCode}");
 
         var json = await res.Content.ReadAsStringAsync(ct);
-        
+
         string? paymentToken = null;
         using (JsonDocument doc = JsonDocument.Parse(json))
         {
@@ -39,6 +39,7 @@ public class FakePaymentProcessor : IPaymentGateway
                 }
             }
         }
+
         return paymentToken ?? throw new InvalidOperationException("Payment failed");
     }
 }

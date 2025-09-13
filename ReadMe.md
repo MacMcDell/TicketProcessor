@@ -81,6 +81,9 @@ RenderSwaggerUI: [GET] http://localhost:7071/api/swagger/ui
   },
   "Redis": {
     "Connection": "localhost:6379"
+  },  
+  "PaymentProcessor" : {
+    "Url": "https://httpbin.org"
   }
 
 }

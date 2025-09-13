@@ -118,7 +118,7 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
                 Name = x.Name,
                 Price = x.Price
             });
-        
+
         //todo apply you query params here.. but we don't need to do that at the moment
         //paging is enough right now.
 

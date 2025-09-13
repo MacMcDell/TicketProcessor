@@ -52,8 +52,8 @@ void AddInfrastructure(IServiceCollection services, IConfiguration cfg)
 {
     // EF Core (Postgres)
     var connectionString = cfg.GetConnectionString("Postgres")
-             ??
-             "Host=localhost;Port=5432;Database=ticketing;Username=postgres;Password=postgres;Include Error Detail=true;";
+                           ??
+                           "Host=localhost;Port=5432;Database=ticketing;Username=postgres;Password=postgres;Include Error Detail=true;";
     services.AddDbContext<TicketingDbContext>(opt =>
         opt.UseNpgsql(connectionString, optionsBuilder =>
         {
@@ -79,22 +79,21 @@ void AddApplication(IServiceCollection services, IConfiguration cfg)
 
     services.AddScoped<IEventService, EventService>();
     services.AddScoped<IVenueService, VenueService>();
-    
+
     var paymentProcessorUrl = cfg["PaymentProcessor:Url"] ?? "https://scoobydooobydoo.org"; // Fallback to a default URL
 
     services.AddHttpClient<IPaymentGateway, FakePaymentProcessor>(client =>
         {
             client.BaseAddress = new Uri(paymentProcessorUrl);
-            client.Timeout = TimeSpan.FromSeconds(10); 
+            client.Timeout = TimeSpan.FromSeconds(10);
         })
         .AddStandardResilienceHandler(options =>
         {
-            options.Retry.MaxRetryAttempts = 3; 
-            options.Retry.Delay = TimeSpan.FromSeconds(1); 
+            options.Retry.MaxRetryAttempts = 3;
+            options.Retry.Delay = TimeSpan.FromSeconds(1);
             options.Retry.BackoffType = DelayBackoffType.Exponential;
             options.Retry.MaxDelay = TimeSpan.FromSeconds(5);
         });
-
 }
 
 void AddValidation(IServiceCollection services)

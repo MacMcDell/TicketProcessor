@@ -17,8 +17,8 @@
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0"/>
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.OpenApi" Version="1.5.1"/>
 
-        <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.9.0" />
-        <PackageReference Include="Microsoft.Extensions.Resilience" Version="9.9.0" />
+        <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.9.0"/>
+        <PackageReference Include="Microsoft.Extensions.Resilience" Version="9.9.0"/>
 
 
     </ItemGroup>

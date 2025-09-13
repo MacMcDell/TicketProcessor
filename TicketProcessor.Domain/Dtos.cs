@@ -167,7 +167,6 @@
         public ReservationStatus Status { get; set; }
         public DateTimeOffset ExpiresAt { get; init; }
         public string? IdempotencyKey { get; init; }
-        
         public string? PurchaseToken { get; set; }
     };
 
