@@ -1,5 +1,4 @@
 ﻿{
-
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
@@ -11,5 +10,4 @@
   "Redis": {
     "Connection": "localhost:6379"
   }
-
 }

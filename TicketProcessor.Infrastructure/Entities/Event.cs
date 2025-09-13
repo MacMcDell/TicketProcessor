@@ -12,5 +12,4 @@ public class Event : BaseProperties
     public string? Description { get; set; }
 
     public ICollection<EventTicketType> TicketTypes { get; set; } = new List<EventTicketType>();
-    
 }

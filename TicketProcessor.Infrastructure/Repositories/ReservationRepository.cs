@@ -26,19 +26,22 @@ public sealed class ReservationRepository : IReservationRepository
     public Task<ReservationResponseDto?> GetByIdAsync(Guid id, CancellationToken ct)
         => _db.Reservations.AsNoTracking()
             .Where(r => r.Id == id)
-            .Select(r => new ReservationResponseDto{
-                Id = r.Id, 
-                EventTicketTypeId = r.EventTicketTypeId, 
-                Quantity = r.Quantity, 
-                Status = r.Status, 
-                ExpiresAt = r.ExpiresAt, 
-                IdempotencyKey = r.IdempotencyKey}
+            .Select(r => new ReservationResponseDto
+                {
+                    Id = r.Id,
+                    EventTicketTypeId = r.EventTicketTypeId,
+                    Quantity = r.Quantity,
+                    Status = r.Status,
+                    ExpiresAt = r.ExpiresAt,
+                    IdempotencyKey = r.IdempotencyKey
+                }
             )
             .FirstOrDefaultAsync(ct);
 
     public Task<int> CountActivePendingAsync(Guid eventTicketTypeId, DateTimeOffset now, CancellationToken ct)
         => _db.Reservations.AsNoTracking()
-            .Where(r => r.EventTicketTypeId == eventTicketTypeId && r.Status == ReservationStatus.Pending && r.ExpiresAt > now)
+            .Where(r => r.EventTicketTypeId == eventTicketTypeId && r.Status == ReservationStatus.Pending &&
+                        r.ExpiresAt > now)
             .SumAsync(r => r.Quantity, ct);
 
     public async Task<ReservationResponseDto?> GetByIdForUpdateAsync(Guid id, CancellationToken ct)
@@ -48,31 +51,31 @@ public sealed class ReservationRepository : IReservationRepository
             ? null
             : new ReservationResponseDto
             {
-               Id = r.Id, 
-               EventTicketTypeId = r.EventTicketTypeId, 
-               Quantity = r.Quantity, 
-               Status = r.Status, 
-               ExpiresAt = r.ExpiresAt, 
-               IdempotencyKey = r.IdempotencyKey
+                Id = r.Id,
+                EventTicketTypeId = r.EventTicketTypeId,
+                Quantity = r.Quantity,
+                Status = r.Status,
+                ExpiresAt = r.ExpiresAt,
+                IdempotencyKey = r.IdempotencyKey
             };
     }
+
     public async Task UpdateAsync(ReservationResponseDto reservationResponse, CancellationToken ct)
     {
         // Use the tracked entity if present; otherwise load and track it
         var e = await _db.Reservations.FirstOrDefaultAsync(x => x.Id == reservationResponse.Id, ct)
                 ?? throw new InvalidOperationException("Reservation not found.");
-        
+
         e.Id = reservationResponse.Id;
         e.EventTicketTypeId = reservationResponse.EventTicketTypeId;
         e.Quantity = reservationResponse.Quantity;
         e.Status = reservationResponse.Status;
         e.ExpiresAt = reservationResponse.ExpiresAt;
         e.IdempotencyKey = reservationResponse.IdempotencyKey;
-        
+
         _db.Attach(e);
         _db.Entry(e).Property(x => x.Status).IsModified = true;
         _db.Entry(e).Property(x => x.ExpiresAt).IsModified = true;
-       
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct)
@@ -84,6 +87,5 @@ public sealed class ReservationRepository : IReservationRepository
             recordToDelete.Status = ReservationStatus.Cancelled;
             _db.Reservations.Remove(recordToDelete);
         }
-        
     }
 }

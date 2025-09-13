@@ -22,7 +22,8 @@ public sealed class EventService : IEventService
         IEventRepository eventsRepo,
         IEventTicketTypeRepository eventTicketTypes,
         IUnitOfWork uow,
-        IMapper mapper, IReservationRepository reservations, IIdempotencyService idem, IPaymentGateway payments, ILogger<EventService> logger)
+        IMapper mapper, IReservationRepository reservations, IIdempotencyService idem, IPaymentGateway payments,
+        ILogger<EventService> logger)
     {
         _venues = venues;
         _events = eventsRepo;
@@ -61,22 +62,23 @@ public sealed class EventService : IEventService
             };
             venueId = await _venues.AddAsync(venueDto, ct);
         }
+
         return venueId;
     }
 
     public async Task<EventDto> CreateEventAsync(CreateEventDto request, CancellationToken ct = default)
     {
-        
         var venueId = await GetVenueIdFromRequest(request, ct);
-        
+
         // 2) Event
         var evtId = Guid.NewGuid();
-        var evtDto = new EventDto{
-            Id= evtId,
-            VenueId= venueId,
-            StartsAt= request.StartsAt,
-            Title= request.Title.Trim(),
-            Description= string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim()
+        var evtDto = new EventDto
+        {
+            Id = evtId,
+            VenueId = venueId,
+            StartsAt = request.StartsAt,
+            Title = request.Title.Trim(),
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim()
         };
         await _events.AddAsync(evtDto, ct);
 
@@ -88,21 +90,22 @@ public sealed class EventService : IEventService
             throw new InvalidOperationException($"Duplicate ticket type '{dup.Key}' in ");
 
         // 4) Create EventTicketType rows (per-event)
-        var ettDtos = request.TicketTypes.Select(t => new EventTicketTypeDto{
+        var ettDtos = request.TicketTypes.Select(t => new EventTicketTypeDto
+        {
             Id = Guid.NewGuid(),
             EventId = evtId,
             Capacity = t.Capacity,
             Sold = 0,
-            Name =t.Name?.Trim() ?? string.Empty,
+            Name = t.Name?.Trim() ?? string.Empty,
             Price = t.Price
         }).ToList();
 
         await _eventTicketTypes.AddRangeAsync(ettDtos, ct);
         await _uow.SaveChangesAsync(ct);
-    
-       return evtDto;
+
+        return evtDto;
     }
-    
+
     public async Task<EventDto> UpdateEventAsync(EventDto input, CancellationToken ct)
     {
         _logger.LogInformation("Updating Event {method}", nameof(UpdateEventAsync));
@@ -120,17 +123,15 @@ public sealed class EventService : IEventService
                 throw new InvalidOperationException($"Venue {input.VenueId} not found for update.");
             existingEvent.VenueId = input.VenueId; // Update VenueId if valid and changed
         }
-        
+
         existingEvent.Title = input.Title!.Trim();
         existingEvent.Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim();
         existingEvent.StartsAt = input.StartsAt;
-        
+
         await _events.UpdateAsync(existingEvent, ct);
         await _uow.SaveChangesAsync(ct);
 
         return existingEvent;
-
-        
     }
 
     /// <summary>
@@ -145,49 +146,57 @@ public sealed class EventService : IEventService
         var reservationDto = await _reservations.GetByIdAsync(reservationId, ct);
         if (reservationDto is null)
             throw new InvalidOperationException($"Reservation {reservationId} not found.");
-        
+
         var eventTicketTypeDto = await _eventTicketTypes.GetByIdAsync(reservationDto.EventTicketTypeId, ct);
-        if(eventTicketTypeDto is null)
+        if (eventTicketTypeDto is null)
             throw new InvalidOperationException($"Event ticket type {reservationDto.EventTicketTypeId} not found.");
-        
+
         await _reservations.DeleteAsync(reservationId, ct);
-       
+
         if (reservationDto.Status == ReservationStatus.Confirmed)
         {
             //rollback the sold tickets.
             await _eventTicketTypes.AdjustIncrementSold(reservationDto.EventTicketTypeId, -reservationDto.Quantity, ct);
         }
-        
+
         await _uow.SaveChangesAsync(ct);
-        
     }
 
     public async Task DeleteEventAsync(Guid eventId, CancellationToken ct = default)
     {
         await _events.DeleteAsync(eventId, ct);
-        await _uow.SaveChangesAsync(ct);    
+        await _uow.SaveChangesAsync(ct);
     }
 
     public async Task DeleteTicketAsync(Guid eventTicketTypeId, CancellationToken ct = default)
     {
         await _eventTicketTypes.DeleteAsync(eventTicketTypeId, ct);
-        await _uow.SaveChangesAsync(ct);    
+        await _uow.SaveChangesAsync(ct);
     }
 
-    public async Task<PagedResult<EventListItemDto>> GetEventsListAsync(PublicEventsQuery query, CancellationToken ct = default)
+    public async Task<EventListItemDto> GetEventDetailsAsync(Guid eventId, CancellationToken ct) =>
+        await _events.GetEventDetails(eventId, ct);
+
+    public async Task<PagedResult<EventTicketTypeDto>> GetTicketTypesAsync(PageQuery query, CancellationToken ct) =>
+        await _eventTicketTypes.GetAllTickets(query, ct);
+
+
+    public async Task<PagedResult<EventListItemDto>> GetEventsListAsync(PageQuery query,
+        CancellationToken ct = default)
         => await _events.GetEventsAsync(query, ct);
 
-    public async Task<CreateReservationResultDto> CreateReservationAsync(CreateReservationRequestDto request, CancellationToken ct = default)
+    public async Task<CreateReservationResultDto> CreateReservationAsync(CreateReservationRequestDto request,
+        CancellationToken ct = default)
     {
-         if (request.Quantity <= 0) 
-             throw new InvalidOperationException("Quantity must be greater than 0.");
-        
-         if (string.IsNullOrWhiteSpace(request.IdempotencyKey)) 
-             throw new InvalidOperationException("IdempotencyKey is required.");
+        if (request.Quantity <= 0)
+            throw new InvalidOperationException("Quantity must be greater than 0.");
+
+        if (string.IsNullOrWhiteSpace(request.IdempotencyKey))
+            throw new InvalidOperationException("IdempotencyKey is required.");
 
         // fetch ETT
         var eventTicketTypeDto = await _eventTicketTypes.GetByIdAsync(request.EventTicketTypeId, ct)
-                  ?? throw new InvalidOperationException("Event ticket type not found.");
+                                 ?? throw new InvalidOperationException("Event ticket type not found.");
 
         // availability = capacity - sold - active pending holds
         var now = DateTimeOffset.UtcNow;
@@ -215,13 +224,15 @@ public sealed class EventService : IEventService
                         existingRes.ExpiresAt, existingRes.Status);
                 }
             }
+
             // Otherwise, generic duplicate
             throw new InvalidOperationException("Duplicate idempotency key.");
         }
 
         // Create reservation row (Pending)
         var expires = now.Add(ttl);
-        var dto = new ReservationResponseDto{
+        var dto = new ReservationResponseDto
+        {
             Id = reservationId,
             EventTicketTypeId = eventTicketTypeDto.Id!.Value,
             Quantity = request.Quantity,
@@ -233,7 +244,8 @@ public sealed class EventService : IEventService
         await _reservations.AddAsync(dto, ct);
         await _uow.SaveChangesAsync(ct);
 
-        return new CreateReservationResultDto(reservationId, eventTicketTypeDto.Id!.Value, request.Quantity, expires, ReservationStatus.Pending);
+        return new CreateReservationResultDto(reservationId, eventTicketTypeDto.Id!.Value, request.Quantity, expires,
+            ReservationStatus.Pending);
     }
 
     public async Task<PurchaseResultDto> PurchaseAsync(PurchaseRequestDto request, CancellationToken ct = default)
@@ -263,9 +275,10 @@ public sealed class EventService : IEventService
 
         // 3) Call payment gateway (external)
         var desc = $"Reservation {res.Id} for ETT {res.EventTicketTypeId} x{res.Quantity}";
-        
+
         //this is a fake payment processor.You would charge the card firt, get the token, then pass it to complete the purchase.
-        var payload = new PaymentProcessorRequestDto( total, request.Currency, desc, request.PaymentToken, res.IdempotencyKey);
+        var payload =
+            new PaymentProcessorRequestDto(total, request.Currency, desc, request.PaymentToken, res.IdempotencyKey);
         await _payments.ChargeAsync(payload, ct);
 
         // 4) If payment succeeds, atomically finalize: increment Sold and confirm reservation
@@ -293,14 +306,10 @@ public sealed class EventService : IEventService
     public async Task<EventTicketTypeDto> UpsertTicketAsync(EventTicketTypeDto input, CancellationToken ct)
     {
         _logger.LogInformation("Upserting ticket {method}", nameof(UpsertTicketAsync));
-        
+
         var dto = _mapper.Map<EventTicketTypeDto>(input);
         var id = await _eventTicketTypes.AddAsync(dto, ct);
         await _uow.SaveChangesAsync(ct);
         return dto with { Id = id };
-        
-        
     }
-
-
 }

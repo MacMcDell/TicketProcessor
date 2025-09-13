@@ -10,7 +10,12 @@ public sealed class VenueRepository : IVenueRepository
 {
     private readonly TicketingDbContext _db;
     private readonly IMapper _mapper;
-    public VenueRepository(TicketingDbContext db, IMapper mapper) { _db = db; _mapper = mapper; }
+
+    public VenueRepository(TicketingDbContext db, IMapper mapper)
+    {
+        _db = db;
+        _mapper = mapper;
+    }
 
     public Task<bool> ExistsAsync(Guid id, CancellationToken ct)
         => _db.Venues.AnyAsync(v => v.Id == id, ct);
@@ -33,7 +38,7 @@ public sealed class VenueRepository : IVenueRepository
     {
         var entity = await _db.Venues.FirstOrDefaultAsync(x => x.Id == existingVenue.Id, ct)
                      ?? throw new InvalidOperationException("Event not found.");
-        
+
         entity.Capacity = existingVenue.Capacity;
         entity.Name = existingVenue.Name;
         _db.Attach(entity);
@@ -43,10 +48,12 @@ public sealed class VenueRepository : IVenueRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken ct)
     {
-        var soldTicketsExist = await _db.Reservations.AnyAsync(x => x.EventTicketTypeId == id && x.Status == ReservationStatus.Confirmed, ct);
-        if(soldTicketsExist)
+        var soldTicketsExist =
+            await _db.Reservations.AnyAsync(x => x.EventTicketTypeId == id && x.Status == ReservationStatus.Confirmed,
+                ct);
+        if (soldTicketsExist)
             throw new InvalidOperationException("Cannot delete venue with sold tickets.");
-        
+
         var entity = await _db.Venues.FirstOrDefaultAsync(x => x.Id == id, ct)
                      ?? throw new InvalidOperationException("Event not found.");
         _db.Venues.Remove(entity);

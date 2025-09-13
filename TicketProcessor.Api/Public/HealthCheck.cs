@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -25,10 +24,11 @@ public class HealthCheck
         _redis = redis;
     }
 
-    [OpenApiOperation(nameof(HealthCheckAsync),tags: ["Health"])]
+    [OpenApiOperation(nameof(HealthCheckAsync), tags: ["Health"])]
     [Function("healthheck")]
     public async Task<HttpResponseData> HealthCheckAsync(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "healthheck")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "healthheck")]
+        HttpRequestData req)
     {
         var res = req.CreateResponse();
 
@@ -54,8 +54,8 @@ public class HealthCheck
             _logger.LogError(ex, "Redis check failed");
             rd = $"error: {ex.Message}";
         }
-        var result  = new { pg, rd };
+
+        var result = new { pg, rd };
         return await req.OkEnvelope(result, "healthy");
     }
-
 }

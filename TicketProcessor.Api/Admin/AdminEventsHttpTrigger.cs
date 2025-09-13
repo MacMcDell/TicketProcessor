@@ -1,8 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Net;
-using System.Text.Json;
+﻿using System.Net;
 using FluentValidation;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
@@ -22,7 +19,8 @@ public class AdminEventsHttpTrigger
     private readonly IValidator<CreateEventDto> _validator;
 
     //todo add jsonSerializerOptions to program.cs
-    public AdminEventsHttpTrigger(ILogger<AdminEventsHttpTrigger> logger, IEventService eventService, IValidator<CreateEventDto> validator)
+    public AdminEventsHttpTrigger(ILogger<AdminEventsHttpTrigger> logger, IEventService eventService,
+        IValidator<CreateEventDto> validator)
     {
         _logger = logger;
         _eventService = eventService;
@@ -30,19 +28,21 @@ public class AdminEventsHttpTrigger
     }
 
     // POST /events — create event (+ ticket types)
-   
-    [OpenApiOperation(nameof(CreateEvent),tags: ["Events"] )]
-    [OpenApiRequestBody("application/json", typeof(CreateEventDto), Description = "The event to create - use venue name and capacity to create new venue. " +
-        "Use Id to use same venue")]
+
+    [OpenApiOperation(nameof(CreateEvent), tags: ["Events"])]
+    [OpenApiRequestBody("application/json", typeof(CreateEventDto), Description =
+        "The event to create - use venue name and capacity to create new venue. " +
+        "Use Id to use same venue. AIRHORN - Make sure to use a date in the future since the eventlist only shows events in the future.")]
     [Function("CreateEvent")]
     public async Task<HttpResponseData> CreateEvent(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/admin/events")] HttpRequestData req,  CancellationToken ct)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/admin/events")]
+        HttpRequestData req, CancellationToken ct)
     {
         _logger.LogInformation("Creating a new event.");
         CreateEventDto? input;
         try
         {
-            input = await req.ReadFromJsonAsync<CreateEventDto>( ct);
+            input = await req.ReadFromJsonAsync<CreateEventDto>(ct);
             if (input is null)
                 return await req.BadRequestEnvelope("Body is required.", ct: ct);
         }
@@ -79,17 +79,19 @@ public class AdminEventsHttpTrigger
             return await req.ServerErrorEnvelope("Unexpected error.", ct: ct);
         }
     }
-    
-    [OpenApiOperation(nameof(UpdateEvent),tags: ["Events"] )]
+
+    [OpenApiOperation(nameof(UpdateEvent), tags: ["Events"])]
     [OpenApiRequestBody("application/json", typeof(EventDto), Description = "The event to update")]
-    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(EventDto), Description = "The updated event")]
+    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(EventDto),
+        Description = "The updated event")]
     [Function(nameof(UpdateEvent))]
     public async Task<HttpResponseData> UpdateEvent(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "v1/admin/events")] HttpRequestData req, CancellationToken ct)
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "v1/admin/events")]
+        HttpRequestData req, CancellationToken ct)
     {
-        EventDto? input; 
-        input = await req.ReadFromJsonAsync<EventDto>( ct);
-        
+        EventDto? input;
+        input = await req.ReadFromJsonAsync<EventDto>(ct);
+
         if (input is null)
             return await req.BadRequestEnvelope("Body is required.", ct: ct);
         try
@@ -104,15 +106,16 @@ public class AdminEventsHttpTrigger
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while updating event");
-            return await req.ServerErrorEnvelope($"Unexpected error. ",[ex.Message], ct: ct);
+            return await req.ServerErrorEnvelope($"Unexpected error. ", [ex.Message], ct: ct);
         }
     }
-    
+
     [OpenApiOperation(nameof(DeleteEvent), tags: ["Events"])]
     [OpenApiParameter("eventId", Required = true, Description = "The ID of the event to delete")]
     [Function(nameof(DeleteEvent))]
     public async Task<HttpResponseData> DeleteEvent(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/admin/events/{eventId}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/admin/events/{eventId}")]
+        HttpRequestData req,
         string eventId,
         CancellationToken ct)
     {
@@ -135,7 +138,4 @@ public class AdminEventsHttpTrigger
             return await req.ServerErrorEnvelope("Unexpected error.", ct: ct);
         }
     }
-
-    
-    
 }

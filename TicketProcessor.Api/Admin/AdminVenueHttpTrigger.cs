@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TicketProcessor.Api.Helpers;
 using TicketProcessor.Application.Interfaces;
@@ -20,19 +21,20 @@ public class AdminVenueHttpTrigger
     private readonly IVenueService _venueService;
     private readonly IValidator<VenueDto> _validator;
 
-    public AdminVenueHttpTrigger(ILogger<AdminVenueHttpTrigger> logger, IVenueService venueService, IValidator<VenueDto> validator)
+    public AdminVenueHttpTrigger(ILogger<AdminVenueHttpTrigger> logger, IVenueService venueService,
+        IValidator<VenueDto> validator)
     {
         _logger = logger;
         _venueService = venueService;
         _validator = validator;
     }
-    
-    
-    
+
+
     [OpenApiOperation(nameof(GetVenues), tags: new[] { "Venues" })]
     [Function(nameof(GetVenues))]
     public async Task<HttpResponseData> GetVenues(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "v1/venues")] HttpRequestData req, CancellationToken ct)
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "v1/venues")]
+        HttpRequestData req, CancellationToken ct)
     {
         _logger.LogInformation("Getting all venues.");
 
@@ -52,13 +54,14 @@ public class AdminVenueHttpTrigger
     [OpenApiRequestBody("application/json", typeof(VenueDto), Description = "The venue to create")]
     [Function(nameof(CreateVenue))]
     public async Task<HttpResponseData> CreateVenue(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/admin/venues")] HttpRequestData req, CancellationToken ct)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/admin/venues")]
+        HttpRequestData req, CancellationToken ct)
     {
         _logger.LogInformation("Creating a new venue.");
         VenueDto? input;
         try
         {
-            input = await req.ReadFromJsonAsync<VenueDto>( ct);
+            input = await req.ReadFromJsonAsync<VenueDto>(ct);
             if (input is null)
                 return await req.BadRequestEnvelope("Body is required.", ct: ct);
         }
@@ -86,7 +89,7 @@ public class AdminVenueHttpTrigger
         {
             return await req.BadRequestEnvelope(ioex.Message, ct: ct);
         }
-        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException)
         {
             return await req.ConflictEnvelope("Concurrency conflict.", ct: ct);
         }
@@ -98,21 +101,20 @@ public class AdminVenueHttpTrigger
     }
 
     // PUT /events/{id} — update event metadata (with If-Match ETag)
-    [OpenApiOperation(nameof(UpdateVenue),tags: ["Venues"])]
+    [OpenApiOperation(nameof(UpdateVenue), tags: ["Venues"])]
     [OpenApiRequestBody("application/json", typeof(VenueDto), Description = "The venue to create")]
     [Function("UpdateVenue")]
     public async Task<HttpResponseData> UpdateVenue(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "v1/admin/venues")] HttpRequestData req,CancellationToken ct)
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "v1/admin/venues")]
+        HttpRequestData req, CancellationToken ct)
     {
-       
-        VenueDto? input; 
-        input = await req.ReadFromJsonAsync<VenueDto>( ct);
-        
+        VenueDto? input;
+        input = await req.ReadFromJsonAsync<VenueDto>(ct);
+
         if (input is null)
             return await req.BadRequestEnvelope("Body is required.", ct: ct);
         try
         {
-         
             var result = await _venueService.UpdateVenueAsync(input, ct);
 
             if (result is null)
@@ -123,7 +125,7 @@ public class AdminVenueHttpTrigger
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while updating event");
-            return await req.ServerErrorEnvelope($"Unexpected error. ",[ex.Message], ct: ct);
+            return await req.ServerErrorEnvelope($"Unexpected error. ", [ex.Message], ct: ct);
         }
     }
 
@@ -131,7 +133,8 @@ public class AdminVenueHttpTrigger
     [OpenApiParameter("id", Required = true, Description = "The venue id to delete")]
     [Function("DeleteVenue")]
     public async Task<HttpResponseData> DeleteVenue(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/admin/venues/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/admin/venues/{id}")]
+        HttpRequestData req,
         string id,
         CancellationToken ct)
     {
@@ -155,5 +158,4 @@ public class AdminVenueHttpTrigger
             return await req.ServerErrorEnvelope("Unexpected error.", ct: ct);
         }
     }
-
 }

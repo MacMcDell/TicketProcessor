@@ -12,8 +12,9 @@ public class IdempotencyService : IIdempotencyService
     {
         _mux = mux;
     }
-    
-    public async Task<(bool set, Guid? existing)> TrySetAsync(string key, Guid reservationId, TimeSpan ttl, CancellationToken ct = default)
+
+    public async Task<(bool set, Guid? existing)> TrySetAsync(string key, Guid reservationId, TimeSpan ttl,
+        CancellationToken ct = default)
     {
         var db = _mux.GetDatabase();
         var k = IdempotencyKey(key);

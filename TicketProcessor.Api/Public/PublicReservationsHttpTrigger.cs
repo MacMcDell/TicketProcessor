@@ -19,13 +19,15 @@ public class PublicReservationsHttpTrigger
         _logger = logger;
         _eventService = eventService;
     }
-    
+
     // POST /events/{id}/reservations
     [OpenApiOperation(nameof(CreateReservation), tags: ["Reservations"])]
-    [OpenApiRequestBody("application/json", typeof(CreateReservationRequestDto), Description = "The reservation to create")]
+    [OpenApiRequestBody("application/json", typeof(CreateReservationRequestDto),
+        Description = "The reservation to create")]
     [Function("Public_CreateReservation")]
     public async Task<HttpResponseData> CreateReservation(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "v1/reservations")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "v1/reservations")]
+        HttpRequestData req,
         FunctionContext ctx,
         CancellationToken ct)
     {
@@ -61,28 +63,30 @@ public class PublicReservationsHttpTrigger
     //todo return reservation details
     [Function("GetReservationDetails")]
     public async Task<HttpResponseData> GetReservationDetails(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "v1/reservations/{reservationId}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "v1/reservations/{reservationId}")]
+        HttpRequestData req,
         string reservationId)
     {
         _logger.LogInformation($"Getting details for reservation ID: {reservationId}");
         return req.CreateResponse(HttpStatusCode.OK);
-
     }
 
     [Function("CancelReservation")]
-    [OpenApiOperation(nameof(CancelReservation), tags:["Reservations"])]
-    [OpenApiParameter("reservationId", Required = true, Description = "the reservation id of the reservation to cancel")]
+    [OpenApiOperation(nameof(CancelReservation), tags: ["Reservations"])]
+    [OpenApiParameter("reservationId", Required = true,
+        Description = "the reservation id of the reservation to cancel")]
     public async Task<HttpResponseData> CancelReservation(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/reservations/{reservationId}/cancel")] HttpRequestData req, string reservationId, CancellationToken ct = default)
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "v1/reservations/{reservationId}/cancel")]
+        HttpRequestData req, string reservationId, CancellationToken ct = default)
     {
         _logger.LogInformation($"Cancelling reservation ID: {reservationId}");
         var reservationIsGuid = Guid.TryParse(reservationId, out var reservationGuid);
-       
-        if (!reservationIsGuid) 
+
+        if (!reservationIsGuid)
             return await req.BadRequestEnvelope("ReservationId required.", ct: ct);
         try
         {
-            await _eventService.DeleteReservationAsync(reservationGuid,ct);
+            await _eventService.DeleteReservationAsync(reservationGuid, ct);
             return await req.OkEnvelope("Reservation deleted.", ct: ct);
         }
         catch (InvalidOperationException ex)
@@ -96,10 +100,6 @@ public class PublicReservationsHttpTrigger
         }
     }
 }
-
-
-
-    
 
 // Data Transfer Objects (DTOs) for the reservation request body
 // You would typically define these in separate files/folders (e.g., Models/DTOs)

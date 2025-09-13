@@ -4,7 +4,7 @@ using TicketProcessor.Application.Interfaces;
 using TicketProcessor.Domain;
 using Moq;
 using Microsoft.EntityFrameworkCore;
-using TicketProcessor.Application.Services; 
+using TicketProcessor.Application.Services;
 
 namespace TicketProcessor.Tests;
 
@@ -25,8 +25,9 @@ public class EventServiceTests : IClassFixture<TestFixture>
         await _fixture.Db.Database.EnsureCreatedAsync();
     }
 
-    
-    private IEventService GetEventService(IIdempotencyService? idempotencyService = null, IReservationRepository? reservationRepository = null)
+
+    private IEventService GetEventService(IIdempotencyService? idempotencyService = null,
+        IReservationRepository? reservationRepository = null)
     {
         return new EventService(
             _fixture.Venues,
@@ -34,8 +35,8 @@ public class EventServiceTests : IClassFixture<TestFixture>
             _fixture.EventTicketTypes,
             _fixture.Uow,
             _fixture.Mapper,
-            reservationRepository ?? _fixture.Reservations, 
-            idempotencyService ?? _idempotencyServiceMock.Object, 
+            reservationRepository ?? _fixture.Reservations,
+            idempotencyService ?? _idempotencyServiceMock.Object,
             _fixture.PaymentGateway,
             _fixture._logger
         );
@@ -44,7 +45,6 @@ public class EventServiceTests : IClassFixture<TestFixture>
     [Fact]
     public async Task CreateReservationAsync_ShouldCreateReservation_WhenTicketsAvailableAndValidRequest()
     {
-        
         await ResetDatabaseAsync();
         var eventService = GetEventService(_idempotencyServiceMock.Object);
 
@@ -55,9 +55,10 @@ public class EventServiceTests : IClassFixture<TestFixture>
         var quantity = 2;
         var holdSeconds = 30;
 
-        
+
         await _fixture.Db.Venues.AddAsync(new Venue { Id = venueId, Name = "Test Venue", Capacity = 100 });
-        await _fixture.Db.Events.AddAsync(new Event { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
+        await _fixture.Db.Events.AddAsync(new Event
+            { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
         await _fixture.Db.EventTicketTypes.AddAsync(new EventTicketType
         {
             Id = eventTicketTypeId,
@@ -77,7 +78,7 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: idempotencyKey
         );
 
-        
+
         _idempotencyServiceMock
             .Setup(x => x.TrySetAsync(
                 It.Is<string>(k => k == idempotencyKey),
@@ -86,10 +87,10 @@ public class EventServiceTests : IClassFixture<TestFixture>
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null));
 
-        
+
         var result = await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         result.Should().NotBeNull();
         result.ReservationId.Should().NotBeEmpty();
         result.EventTicketTypeId.Should().Be(eventTicketTypeId);
@@ -97,7 +98,7 @@ public class EventServiceTests : IClassFixture<TestFixture>
         result.Status.Should().Be(ReservationStatus.Pending);
         result.ExpiresAt.Should().BeAfter(DateTimeOffset.UtcNow);
 
-        
+
         var savedReservation = await _fixture.Db.Reservations.FirstOrDefaultAsync(r => r.Id == result.ReservationId);
         savedReservation.Should().NotBeNull();
         savedReservation!.EventTicketTypeId.Should().Be(eventTicketTypeId);
@@ -109,9 +110,8 @@ public class EventServiceTests : IClassFixture<TestFixture>
     [Fact]
     public async Task CreateReservationAsync_ShouldThrowException_WhenQuantityIsZero()
     {
-        
         await ResetDatabaseAsync();
-        var eventService = GetEventService(); 
+        var eventService = GetEventService();
 
         var request = new CreateReservationRequestDto
         (
@@ -121,10 +121,10 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: Guid.NewGuid().ToString()
         );
 
-        
+
         Func<Task> action = async () => await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Quantity must be greater than 0.");
     }
@@ -132,7 +132,6 @@ public class EventServiceTests : IClassFixture<TestFixture>
     [Fact]
     public async Task CreateReservationAsync_ShouldThrowException_WhenQuantityIsNegative()
     {
-        
         await ResetDatabaseAsync();
         var eventService = GetEventService();
 
@@ -144,10 +143,10 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: Guid.NewGuid().ToString()
         );
 
-        
+
         Func<Task> action = async () => await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Quantity must be greater than 0.");
     }
@@ -158,7 +157,6 @@ public class EventServiceTests : IClassFixture<TestFixture>
     [InlineData(" ")]
     public async Task CreateReservationAsync_ShouldThrowException_WhenIdempotencyKeyIsMissing(string idempotencyKey)
     {
-        
         await ResetDatabaseAsync();
         var eventService = GetEventService();
 
@@ -170,10 +168,10 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: idempotencyKey
         );
 
-        
+
         Func<Task> action = async () => await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("IdempotencyKey is required.");
     }
@@ -181,9 +179,8 @@ public class EventServiceTests : IClassFixture<TestFixture>
     [Fact]
     public async Task CreateReservationAsync_ShouldThrowException_WhenEventTicketTypeNotFound()
     {
-        
         await ResetDatabaseAsync();
-        
+
         _idempotencyServiceMock.Invocations.Clear();
         var eventService = GetEventService(_idempotencyServiceMock.Object);
 
@@ -199,8 +196,7 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: idempotencyKey
         );
 
-        
-        
+
         _idempotencyServiceMock
             .Setup(x => x.TrySetAsync(
                 It.IsAny<string>(),
@@ -210,10 +206,9 @@ public class EventServiceTests : IClassFixture<TestFixture>
             .ReturnsAsync((true, null));
 
 
-        
         Func<Task> action = async () => await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Event ticket type not found.");
     }
@@ -221,27 +216,27 @@ public class EventServiceTests : IClassFixture<TestFixture>
     [Fact]
     public async Task CreateReservationAsync_ShouldThrowException_WhenNotEnoughTicketsAvailable()
     {
-        
         await ResetDatabaseAsync();
-        
+
         _idempotencyServiceMock.Invocations.Clear();
-        
+
         var eventId = Guid.NewGuid();
         var venueId = Guid.NewGuid();
         var eventTicketTypeId = Guid.NewGuid();
         var idempotencyKey = Guid.NewGuid().ToString();
         var quantityToRequest = 3;
 
-        
+
         await _fixture.Db.Venues.AddAsync(new Venue { Id = venueId, Name = "Test Venue", Capacity = 100 });
-        await _fixture.Db.Events.AddAsync(new Event { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
+        await _fixture.Db.Events.AddAsync(new Event
+            { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
         await _fixture.Db.EventTicketTypes.AddAsync(new EventTicketType
         {
             Id = eventTicketTypeId,
             EventId = eventId,
             Name = "Standard",
             Price = 10m,
-            Capacity = 2, 
+            Capacity = 2,
             Sold = 0
         });
         await _fixture.Db.SaveChangesAsync();
@@ -254,7 +249,7 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: idempotencyKey
         );
 
-        
+
         _idempotencyServiceMock
             .Setup(x => x.TrySetAsync(
                 It.IsAny<string>(),
@@ -263,18 +258,18 @@ public class EventServiceTests : IClassFixture<TestFixture>
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null));
 
-        
+
         var reservationsMock = new Mock<IReservationRepository>();
         reservationsMock.Setup(r => r.CountActivePendingAsync(
-            It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+                It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 
         var eventService = GetEventService(_idempotencyServiceMock.Object, reservationsMock.Object);
 
-        
+
         Func<Task> action = async () => await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Not enough tickets available.");
     }
@@ -282,28 +277,28 @@ public class EventServiceTests : IClassFixture<TestFixture>
     [Fact]
     public async Task CreateReservationAsync_ShouldThrowException_WhenNotEnoughTicketsDueToPendingHolds()
     {
-        
         await ResetDatabaseAsync();
-        
+
         _idempotencyServiceMock.Invocations.Clear();
 
         var eventId = Guid.NewGuid();
         var venueId = Guid.NewGuid();
         var eventTicketTypeId = Guid.NewGuid();
         var idempotencyKey = Guid.NewGuid().ToString();
-        var quantityToRequest = 2; 
+        var quantityToRequest = 2;
 
-        
+
         await _fixture.Db.Venues.AddAsync(new Venue { Id = venueId, Name = "Test Venue", Capacity = 100 });
-        await _fixture.Db.Events.AddAsync(new Event { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
+        await _fixture.Db.Events.AddAsync(new Event
+            { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
         await _fixture.Db.EventTicketTypes.AddAsync(new EventTicketType
         {
             Id = eventTicketTypeId,
             EventId = eventId,
             Name = "Standard",
             Price = 10m,
-            Capacity = 5, 
-            Sold = 1 
+            Capacity = 5,
+            Sold = 1
         });
         await _fixture.Db.SaveChangesAsync();
 
@@ -315,7 +310,7 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: idempotencyKey
         );
 
-        
+
         _idempotencyServiceMock
             .Setup(x => x.TrySetAsync(
                 It.IsAny<string>(),
@@ -324,35 +319,32 @@ public class EventServiceTests : IClassFixture<TestFixture>
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null));
 
-        
+
         var reservationsMock = new Mock<IReservationRepository>();
         reservationsMock.Setup(r => r.CountActivePendingAsync(
-            It.Is<Guid>(id => id == eventTicketTypeId),
-            It.IsAny<DateTimeOffset>(),
-            It.IsAny<CancellationToken>()))
-            .ReturnsAsync(3); 
+                It.Is<Guid>(id => id == eventTicketTypeId),
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
 
         var eventService = GetEventService(_idempotencyServiceMock.Object, reservationsMock.Object);
 
-        
+
         Func<Task> action = async () => await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Not enough tickets available.");
-
-        
-        
     }
 
     [Fact]
-    public async Task CreateReservationAsync_ShouldReturnExistingReservation_WhenDuplicateIdempotencyKeyAndReservationExists()
+    public async Task
+        CreateReservationAsync_ShouldReturnExistingReservation_WhenDuplicateIdempotencyKeyAndReservationExists()
     {
-        
         await ResetDatabaseAsync();
-        
+
         _idempotencyServiceMock.Invocations.Clear();
-        
+
         var eventId = Guid.NewGuid();
         var venueId = Guid.NewGuid();
         var eventTicketTypeId = Guid.NewGuid();
@@ -363,9 +355,10 @@ public class EventServiceTests : IClassFixture<TestFixture>
         var now = DateTimeOffset.UtcNow;
         var expiresAt = now.AddSeconds(holdSeconds);
 
-        
+
         await _fixture.Db.Venues.AddAsync(new Venue { Id = venueId, Name = "Test Venue", Capacity = 100 });
-        await _fixture.Db.Events.AddAsync(new Event { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
+        await _fixture.Db.Events.AddAsync(new Event
+            { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
         await _fixture.Db.EventTicketTypes.AddAsync(new EventTicketType
         {
             Id = eventTicketTypeId,
@@ -375,7 +368,7 @@ public class EventServiceTests : IClassFixture<TestFixture>
             Capacity = 5,
             Sold = 0
         });
-        
+
         await _fixture.Db.Reservations.AddAsync(new Reservation
         {
             Id = existingReservationId,
@@ -395,48 +388,48 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: idempotencyKey
         );
 
-        
+
         _idempotencyServiceMock
             .Setup(x => x.TrySetAsync(
                 It.Is<string>(k => k == idempotencyKey),
                 It.IsAny<Guid>(),
                 It.IsAny<TimeSpan>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((false, existingReservationId)); 
+            .ReturnsAsync((false, existingReservationId));
 
         var eventService = GetEventService(_idempotencyServiceMock.Object);
 
-        
+
         var result = await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         result.Should().NotBeNull();
         result.ReservationId.Should().Be(existingReservationId);
         result.EventTicketTypeId.Should().Be(eventTicketTypeId);
         result.Quantity.Should().Be(quantity);
         result.Status.Should().Be(ReservationStatus.Pending);
-        result.ExpiresAt.Should().BeCloseTo(expiresAt, TimeSpan.FromMilliseconds(100)); 
+        result.ExpiresAt.Should().BeCloseTo(expiresAt, TimeSpan.FromMilliseconds(100));
     }
 
     [Fact]
     public async Task CreateReservationAsync_ShouldThrowException_WhenDuplicateIdempotencyKeyButReservationNotFound()
     {
-        
         await ResetDatabaseAsync();
-        
+
         _idempotencyServiceMock.Invocations.Clear();
 
         var eventId = Guid.NewGuid();
         var venueId = Guid.NewGuid();
         var eventTicketTypeId = Guid.NewGuid();
-        var nonExistentExistingReservationId = Guid.NewGuid(); 
+        var nonExistentExistingReservationId = Guid.NewGuid();
         var idempotencyKey = Guid.NewGuid().ToString();
         var quantity = 2;
         var holdSeconds = 30;
 
-        
+
         await _fixture.Db.Venues.AddAsync(new Venue { Id = venueId, Name = "Test Venue", Capacity = 100 });
-        await _fixture.Db.Events.AddAsync(new Event { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
+        await _fixture.Db.Events.AddAsync(new Event
+            { Id = eventId, VenueId = venueId, Title = "Test Event", StartsAt = DateTimeOffset.UtcNow.AddDays(1) });
         await _fixture.Db.EventTicketTypes.AddAsync(new EventTicketType
         {
             Id = eventTicketTypeId,
@@ -456,21 +449,21 @@ public class EventServiceTests : IClassFixture<TestFixture>
             IdempotencyKey: idempotencyKey
         );
 
-        
+
         _idempotencyServiceMock
             .Setup(x => x.TrySetAsync(
                 It.Is<string>(k => k == idempotencyKey),
                 It.IsAny<Guid>(),
                 It.IsAny<TimeSpan>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((false, nonExistentExistingReservationId)); 
+            .ReturnsAsync((false, nonExistentExistingReservationId));
 
         var eventService = GetEventService(_idempotencyServiceMock.Object);
 
-        
+
         Func<Task> action = async () => await eventService.CreateReservationAsync(request, CancellationToken.None);
 
-        
+
         await action.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Duplicate idempotency key.");
     }

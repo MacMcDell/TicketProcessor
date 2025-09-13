@@ -1,11 +1,6 @@
-﻿using System.Net;
-using System.Text.Json;
-using Microsoft.Azure.Functions.Worker;
+﻿using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.EntityFrameworkCore;
 using TicketProcessor.Api.Helpers;
@@ -30,7 +25,8 @@ public class PublicPurchaseHttpTrigger
     [OpenApiRequestBody("application/json", typeof(PurchaseRequestDto), Description = "The purchase to process")]
     [Function("PurchaseTickets")]
     public async Task<HttpResponseData> PurchaseTickets(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/purchases")] HttpRequestData req, CancellationToken ct = default)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "v1/purchases")]
+        HttpRequestData req, CancellationToken ct = default)
     {
         _logger.LogInformation("Attempting to process ticket purchase.");
         PurchaseRequestDto? input;
@@ -46,7 +42,7 @@ public class PublicPurchaseHttpTrigger
 
         try
         {
-            var result = await  _eventService.PurchaseAsync(input, ct);
+            var result = await _eventService.PurchaseAsync(input, ct);
             return await req.CreatedEnvelope(result, "Purchase completed.", ct);
         }
         catch (InvalidOperationException ex)

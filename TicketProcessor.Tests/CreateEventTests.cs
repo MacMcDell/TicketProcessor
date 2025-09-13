@@ -75,7 +75,8 @@ public class CreateEventDtoTests
             venueName: "Big Room",
             venueCapacity: 1000,
             title: "Double Feature",
-            tickets: new (string, decimal, int)[] {
+            tickets: new (string, decimal, int)[]
+            {
                 ("GA", 49.99m, 850),
                 ("VIP", 129.00m, 150)
             });
@@ -105,8 +106,9 @@ public class CreateEventDtoTests
             StartsAt: DateTimeOffset.UtcNow.AddDays(7),
             Title: "Bad Event",
             Description: null,
-            TicketTypes: new List<CreateEventTicketTypeDto> {
-                new ("GA", 10, 100)
+            TicketTypes: new List<CreateEventTicketTypeDto>
+            {
+                new("GA", 10, 100)
             }
         );
 
@@ -116,5 +118,4 @@ public class CreateEventDtoTests
         result.IsValid.Should().BeFalse();
         result.Errors.Select(e => e.ErrorMessage).Should().Contain(x => x.Contains("Venue"));
     }
-
 }

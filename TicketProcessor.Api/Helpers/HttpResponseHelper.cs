@@ -24,25 +24,34 @@ public static class HttpResponseHelper
 
         return res;
     }
-    public static Task<HttpResponseData> OkEnvelope<T>(this HttpRequestData req, T data, string? message = null, CancellationToken ct = default)
+
+    public static Task<HttpResponseData> OkEnvelope<T>(this HttpRequestData req, T data, string? message = null,
+        CancellationToken ct = default)
         => WriteEnvelopeAsync(req, HttpStatusCode.OK, ApiResponse<T>.Ok(data, message), ct);
 
-    public static Task<HttpResponseData> CreatedEnvelope<T>(this HttpRequestData req, T data, string? message = null, CancellationToken ct = default)
+    public static Task<HttpResponseData> CreatedEnvelope<T>(this HttpRequestData req, T data, string? message = null,
+        CancellationToken ct = default)
         => WriteEnvelopeAsync(req, HttpStatusCode.Created, ApiResponse<T>.Ok(data, message), ct);
-    
-    public static Task<HttpResponseData> ErrorEnvelope(this HttpRequestData req, HttpStatusCode status, string message, IEnumerable<string>? errors = null, CancellationToken ct = default)
-        => WriteEnvelopeAsync<object?>(req, status, ApiResponse<object?>.Fail(message, errors ?? Array.Empty<string>()), ct);
+
+    public static Task<HttpResponseData> ErrorEnvelope(this HttpRequestData req, HttpStatusCode status, string message,
+        IEnumerable<string>? errors = null, CancellationToken ct = default)
+        => WriteEnvelopeAsync<object?>(req, status, ApiResponse<object?>.Fail(message, errors ?? Array.Empty<string>()),
+            ct);
 
     // Convenience shortcuts
-    public static Task<HttpResponseData> BadRequestEnvelope(this HttpRequestData req, string message, IEnumerable<string>? errors = null, CancellationToken ct = default)
+    public static Task<HttpResponseData> BadRequestEnvelope(this HttpRequestData req, string message,
+        IEnumerable<string>? errors = null, CancellationToken ct = default)
         => req.ErrorEnvelope(HttpStatusCode.BadRequest, message, errors, ct);
 
-    public static Task<HttpResponseData> NotFoundEnvelope(this HttpRequestData req, string message, IEnumerable<string>? errors = null, CancellationToken ct = default)
+    public static Task<HttpResponseData> NotFoundEnvelope(this HttpRequestData req, string message,
+        IEnumerable<string>? errors = null, CancellationToken ct = default)
         => req.ErrorEnvelope(HttpStatusCode.NotFound, message, errors, ct);
 
-    public static Task<HttpResponseData> ConflictEnvelope(this HttpRequestData req, string message, IEnumerable<string>? errors = null, CancellationToken ct = default)
+    public static Task<HttpResponseData> ConflictEnvelope(this HttpRequestData req, string message,
+        IEnumerable<string>? errors = null, CancellationToken ct = default)
         => req.ErrorEnvelope(HttpStatusCode.Conflict, message, errors, ct);
 
-    public static Task<HttpResponseData> ServerErrorEnvelope(this HttpRequestData req, string message, IEnumerable<string>? errors = null, CancellationToken ct = default)
+    public static Task<HttpResponseData> ServerErrorEnvelope(this HttpRequestData req, string message,
+        IEnumerable<string>? errors = null, CancellationToken ct = default)
         => req.ErrorEnvelope(HttpStatusCode.InternalServerError, message, errors, ct);
 }

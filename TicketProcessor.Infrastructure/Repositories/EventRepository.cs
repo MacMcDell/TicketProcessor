@@ -9,7 +9,12 @@ public sealed class EventRepository : IEventRepository
 {
     private readonly TicketingDbContext _db;
     private readonly IMapper _mapper;
-    public EventRepository(TicketingDbContext db, IMapper mapper) { _db = db; _mapper = mapper; }
+
+    public EventRepository(TicketingDbContext db, IMapper mapper)
+    {
+        _db = db;
+        _mapper = mapper;
+    }
 
     public async Task<Guid> AddAsync(EventDto evt, CancellationToken ct)
     {
@@ -19,10 +24,13 @@ public sealed class EventRepository : IEventRepository
         return entity.Id;
     }
 
-    public async Task<PagedResult<EventListItemDto>> GetEventsAsync(PublicEventsQuery q, CancellationToken ct)
+
+    public async Task<PagedResult<EventListItemDto>> GetEventsAsync(PageQuery query, CancellationToken ct)
     {
-        var from = q.From ?? DateTimeOffset.UtcNow;
-        var to = q.To;
+        //todo in reals we would cache the heck out of this. 
+
+        var from = query.From ?? DateTimeOffset.UtcNow;
+        var to = query.To;
 
         var baseQuery = _db.Events.AsNoTracking()
             .Join(_db.Venues.AsNoTracking(),
@@ -36,11 +44,11 @@ public sealed class EventRepository : IEventRepository
 
         var total = await baseQuery.CountAsync(ct); //get the total items before paging.
 
-        var page = q.Page <= 0 ? 1 : q.Page;
-        var size = q.PageSize <= 0 ? 20 : Math.Min(q.PageSize, 100);
+        var page = query.Page <= 0 ? 1 : query.Page;
+        var size = query.PageSize <= 0 ? 20 : Math.Min(query.PageSize, 100);
         var skip = (page - 1) * size;
 
-//todo refactor for pending reservations.. available should also include pending. 
+        //todo refactor for pending reservations.. available should also include pending. 
         var items = await baseQuery
             .OrderBy(x => x.e.StartsAt)
             .Skip(skip)
@@ -68,16 +76,16 @@ public sealed class EventRepository : IEventRepository
         return new PagedResult<EventListItemDto>(items, total);
     }
 
-    public async Task<EventDto?> GetByIdAsync(Guid id, CancellationToken ct) =>  await _db.Events.AsNoTracking()
+    public async Task<EventDto?> GetByIdAsync(Guid id, CancellationToken ct) => await _db.Events.AsNoTracking()
         .Where(r => r.Id == id)
-        .Select(r => new EventDto{ Id = r.Id, Title = r.Title, StartsAt = r.StartsAt, VenueId = r.VenueId })
+        .Select(r => new EventDto { Id = r.Id, Title = r.Title, StartsAt = r.StartsAt, VenueId = r.VenueId })
         .FirstOrDefaultAsync(ct);
 
     public async Task UpdateAsync(EventDto existingEvent, CancellationToken ct)
     {
         var entity = await _db.Events.FirstOrDefaultAsync(x => x.Id == existingEvent.Id, ct)
                      ?? throw new InvalidOperationException("Event not found.");
-        
+
         entity.Id = existingEvent.Id!.Value;
         entity.Title = existingEvent.Title;
         entity.StartsAt = existingEvent.StartsAt;
@@ -91,11 +99,47 @@ public sealed class EventRepository : IEventRepository
     {
         var entity = await _db.Events.FirstOrDefaultAsync(x => x.Id == eventId, ct)
                      ?? throw new InvalidOperationException("Event not found.");
-        var ticketsSold = await _db.Reservations.AnyAsync(x => x.EventTicketTypeId == eventId && x.Status == ReservationStatus.Confirmed, ct);
-        
-        if(ticketsSold)
+        var ticketsSold =
+            await _db.Reservations.AnyAsync(
+                x => x.EventTicketTypeId == eventId && x.Status == ReservationStatus.Confirmed, ct);
+
+        if (ticketsSold)
             throw new InvalidOperationException("Cannot delete event with tickets sold.");
-        
+
         _db.Events.Remove(entity);
+    }
+
+    public async Task<EventListItemDto> GetEventDetails(Guid eventId, CancellationToken ct)
+    {
+        var eventListItemDto = await _db.Events.AsNoTracking()
+            .Join(_db.Venues.AsNoTracking(),
+                e => e.VenueId,
+                v => v.Id,
+                (e, v) => new { e, v })
+            .Where(x => x.e.Id == eventId)
+            .Select(x => new EventListItemDto(
+                x.e.Id,
+                x.e.Title,
+                x.e.StartsAt,
+                x.v.Id,
+                x.v.Name,
+                (from ett in _db.EventTicketTypes.AsNoTracking()
+                    where ett.EventId == x.e.Id
+                    orderby ett.Price
+                    select new TicketTypeAvailabilityDto(
+                        ett.Id,
+                        ett.Name,
+                        ett.Price,
+                        ett.Capacity,
+                        ett.Sold,
+                        Math.Max(0, ett.Capacity - ett.Sold)
+                    )).ToList()
+            ))
+            .FirstOrDefaultAsync(ct);
+
+        if (eventListItemDto is null)
+            throw new InvalidOperationException("Event not found.");
+
+        return eventListItemDto;
     }
 }

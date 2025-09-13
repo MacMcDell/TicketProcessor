@@ -21,8 +21,8 @@ public class CreateEventValidation : AbstractValidator<CreateEventDto>
             t.RuleFor(y => y.Price).GreaterThanOrEqualTo(0);
             t.RuleFor(y => y.Capacity).GreaterThan(0);
         });
-        
-       RuleFor(x => x.TicketTypes)
+
+        RuleFor(x => x.TicketTypes)
             .Must(list => list.Select(t => t.Name.Trim().ToLowerInvariant()).Distinct().Count() == list.Count)
             .WithMessage("Ticket type names must be unique within the event.");
     }

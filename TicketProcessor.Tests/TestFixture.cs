@@ -28,7 +28,7 @@ public sealed class TestFixture : IAsyncDisposable
 
     private HttpClient _client = new HttpClient();
 
-    private IIdempotencyService _mockIdempotency = new Mock<IIdempotencyService>().Object; 
+    private IIdempotencyService _mockIdempotency = new Mock<IIdempotencyService>().Object;
 
     public IEventService EventService { get; }
 
@@ -44,25 +44,23 @@ public sealed class TestFixture : IAsyncDisposable
         Db = new TicketingDbContext(options);
 
         // AutoMapper
-        var mapperConfig = new MapperConfiguration(cfg =>
-        {
-            cfg.AddProfile<EntityToDtoProfile>();
-        }, new LoggerFactory());
+        var mapperConfig =
+            new MapperConfiguration(cfg => { cfg.AddProfile<EntityToDtoProfile>(); }, new LoggerFactory());
         mapperConfig.AssertConfigurationIsValid();
         Mapper = mapperConfig.CreateMapper();
-        
-        
+
 
         // EF repos
         Venues = new VenueRepository(Db, Mapper);
         Events = new EventRepository(Db, Mapper);
         PaymentGateway = new FakePaymentProcessor(_client);
-        Reservations = new ReservationRepository(Db); 
+        Reservations = new ReservationRepository(Db);
         EventTicketTypes = new EventTicketTypeRepository(Db, Mapper);
         Uow = new UnitOfWork(Db);
 
         // App service
-        EventService = new EventService(Venues, Events, EventTicketTypes, Uow, Mapper, Reservations, _mockIdempotency, PaymentGateway,_logger );
+        EventService = new EventService(Venues, Events, EventTicketTypes, Uow, Mapper, Reservations, _mockIdempotency,
+            PaymentGateway, _logger);
     }
 
     public ValueTask DisposeAsync()

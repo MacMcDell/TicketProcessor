@@ -2,5 +2,8 @@
 
 public enum ReservationStatus
 {
-Pending = 0, Confirmed = 1, Cancelled = 2, Expired = 3 
+    Pending = 0,
+    Confirmed = 1,
+    Cancelled = 2,
+    Expired = 3
 }

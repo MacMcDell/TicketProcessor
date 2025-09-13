@@ -3,7 +3,6 @@ using Azure.Core.Serialization;
 using FluentValidation;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-
 using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +22,7 @@ var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults(o =>
     {
         o.Serializer = new JsonObjectSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-    }) 
+    })
     .ConfigureOpenApi()
     .ConfigureAppConfiguration((ctx, cfg) =>
     {
@@ -35,14 +34,14 @@ var host = new HostBuilder()
     .ConfigureServices((ctx, services) =>
     {
         services.AddApplicationInsightsTelemetryWorkerService();
-        AddInfrastructure(services,ctx.Configuration);
+        AddInfrastructure(services, ctx.Configuration);
         AddApplication(services);
         AddValidation(services);
         services.AddLogging();
     })
     .ConfigureLogging(lb => lb.AddConsole())
     .Build();
-  
+
 
 await host.RunAsync();
 return;
@@ -52,19 +51,16 @@ void AddInfrastructure(IServiceCollection services, IConfiguration cfg)
 {
     // EF Core (Postgres)
     var cs = cfg.GetConnectionString("Postgres")
-             ?? "Host=localhost;Port=5432;Database=ticketing;Username=postgres;Password=postgres;Include Error Detail=true;";
+             ??
+             "Host=localhost;Port=5432;Database=ticketing;Username=postgres;Password=postgres;Include Error Detail=true;";
     services.AddDbContext<TicketingDbContext>(opt =>
         opt.UseNpgsql(cs, b => b.MigrationsAssembly(typeof(TicketingDbContext).Assembly.FullName)));
 
     // Redis
     var redisConn = cfg["Redis:Connection"] ?? "localhost:6379";
     services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConn));
-    
-    services.AddAutoMapper(cfg =>
-    {
-        cfg.AddProfile<EntityToDtoProfile>();
-    });
 
+    services.AddAutoMapper(cfg => { cfg.AddProfile<EntityToDtoProfile>(); });
 }
 
 void AddApplication(IServiceCollection services)
@@ -75,14 +71,12 @@ void AddApplication(IServiceCollection services)
     services.AddScoped<IReservationRepository, ReservationRepository>();
     services.AddScoped<IIdempotencyService, IdempotencyService>();
     services.AddScoped<IUnitOfWork, UnitOfWork>();
-    
+
     services.AddScoped<IEventService, EventService>();
     services.AddScoped<IVenueService, VenueService>();
-    
+
     // HttpClient for payment gateway
     services.AddHttpClient<IPaymentGateway, FakePaymentProcessor>();
-   
-
 }
 
 void AddValidation(IServiceCollection services)

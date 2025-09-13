@@ -28,7 +28,7 @@ public class EntityToDtoProfile : Profile
             .ForMember(d => d.LastModifiedBy, o => o.Ignore())
             .ForMember(d => d.IsDeleted, o => o.Ignore());
 
-       CreateMap<EventTicketTypeDto, EventTicketType>()
+        CreateMap<EventTicketTypeDto, EventTicketType>()
             .ForMember(d => d.Event, o => o.Ignore())
             .ForMember(d => d.Created, o => o.Ignore())
             .ForMember(d => d.CreatedBy, o => o.Ignore())

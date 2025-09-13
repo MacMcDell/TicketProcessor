@@ -1,7 +1,7 @@
 ﻿namespace TicketProcessor.Domain
 {
     #region Event DTOs
-    
+
     /// <summary>
     /// create event ticket type for existing event
     /// </summary>
@@ -13,7 +13,7 @@
         public string Name { get; init; } = default!;
         public decimal Price { get; init; }
     }
-    
+
     /// <summary>
     /// Get event ticket type for existing event
     /// </summary>
@@ -35,10 +35,10 @@
         public Guid? Id { get; set; }
         public Guid VenueId { get; set; }
         public DateTimeOffset StartsAt { get; set; }
-        public string Title { get; set; } = string.Empty; 
+        public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
     };
-    
+
     /// <summary>
     /// create new event and new venue if necessar and new ticket types for existing event
     /// </summary>
@@ -99,7 +99,6 @@
         public string Name { get; set; }
         public int Capacity { get; set; }
     }
-   
 
     #endregion
 
@@ -155,19 +154,20 @@
     #endregion
 
     #region Reservation DTOs
-    
+
     /// <summary>
     /// what the customer sees.
     /// </summary>
     public record ReservationResponseDto
     {
-        public Guid Id { get;init; }
-        public Guid EventTicketTypeId { get;init; }
-        public int Quantity { get;init; }
-        public ReservationStatus Status { get;set; }
-        public DateTimeOffset ExpiresAt { get;init; }
-        public string? IdempotencyKey { get;init; }
+        public Guid Id { get; init; }
+        public Guid EventTicketTypeId { get; init; }
+        public int Quantity { get; init; }
+        public ReservationStatus Status { get; set; }
+        public DateTimeOffset ExpiresAt { get; init; }
+        public string? IdempotencyKey { get; init; }
     };
+
     /// <summary>
     /// the reservation request.
     /// </summary>
@@ -182,7 +182,7 @@
         int HoldSeconds = 600 // default 10 minutes //this should be configurable. 
     );
 
-    
+
     public sealed record CreateReservationResultDto(
         Guid ReservationId,
         Guid EventTicketTypeId,
@@ -220,7 +220,7 @@
     public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total);
 
     // Query params for filtering/paging
-    public sealed record PublicEventsQuery(
+    public sealed record PageQuery(
         DateTimeOffset? From = null,
         DateTimeOffset? To = null,
         Guid? VenueId = null,

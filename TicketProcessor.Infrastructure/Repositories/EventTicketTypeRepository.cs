@@ -9,11 +9,17 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
 {
     private readonly TicketingDbContext _db;
     private readonly IMapper _mapper;
-    public EventTicketTypeRepository(TicketingDbContext db, IMapper mapper) { _db = db; _mapper = mapper; }
+
+    public EventTicketTypeRepository(TicketingDbContext db, IMapper mapper)
+    {
+        _db = db;
+        _mapper = mapper;
+    }
 
     public Task AddRangeAsync(IEnumerable<EventTicketTypeDto> items, CancellationToken ct)
     {
-        var entities = items.Select(i => new EventTicketType {
+        var entities = items.Select(i => new EventTicketType
+        {
             Id = i.Id ?? Guid.NewGuid(),
             EventId = i.EventId,
             Name = i.Name,
@@ -29,12 +35,15 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
     public Task<EventTicketTypeDto?> GetByIdAsync(Guid id, CancellationToken ct)
         => _db.EventTicketTypes.AsNoTracking()
             .Where(x => x.Id == id)
-            .Select(x => new EventTicketTypeDto{Id = x.Id, EventId = x.EventId,Capacity = x.Capacity,Sold = x.Sold,Name = x.Name,Price = x.Price})
+            .Select(x => new EventTicketTypeDto
+            {
+                Id = x.Id, EventId = x.EventId, Capacity = x.Capacity, Sold = x.Sold, Name = x.Name, Price = x.Price
+            })
             .FirstOrDefaultAsync(ct);
 
     public Task<bool> ExistsByNameAsync(Guid eventId, string name, CancellationToken ct)
         => _db.EventTicketTypes.AnyAsync(x => x.EventId == eventId && x.Name == name, ct);
-    
+
     public Task<bool> ExistsAsync(Guid id, CancellationToken ct)
         => _db.EventTicketTypes.AnyAsync(t => t.Id == id, ct);
 
@@ -43,7 +52,7 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
         EventTicketType? entity = null;
         if (ticketType.Id == null || ticketType.Id == Guid.Empty)
         {
-            if(ticketType.EventId == Guid.Empty)
+            if (ticketType.EventId == Guid.Empty)
                 throw new InvalidOperationException("Event ID is required.");
             // New record: create and add
             entity = _mapper.Map<EventTicketType>(ticketType);
@@ -58,12 +67,12 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
             {
                 throw new InvalidOperationException($"EventTicketType with Id {ticketType.Id} not found for update.");
             }
-            _mapper.Map(ticketType, entity); 
-            _db.EventTicketTypes.Update(entity); 
-        }
-        
-        return entity.Id;
 
+            _mapper.Map(ticketType, entity);
+            _db.EventTicketTypes.Update(entity);
+        }
+
+        return entity.Id;
     }
 
     public async Task AdjustIncrementSold(Guid eventTicketTypeId, int qty, CancellationToken ct)
@@ -76,17 +85,50 @@ public sealed class EventTicketTypeRepository : IEventTicketTypeRepository
             throw new InvalidOperationException("Capacity exceeded.");
 
         eventTicket.Sold += qty;
-
     }
 
     public async Task DeleteAsync(Guid eventTicketTypeId, CancellationToken ct)
     {
         var eventTicket = await _db.EventTicketTypes.FirstOrDefaultAsync(x => x.Id == eventTicketTypeId, ct)
                           ?? throw new InvalidOperationException("Event ticket type not found.");
-        var ticketsSold = await _db.Reservations.AnyAsync(x => x.EventTicketTypeId == eventTicketTypeId && x.Status == ReservationStatus.Confirmed, ct);
+        var ticketsSold =
+            await _db.Reservations.AnyAsync(
+                x => x.EventTicketTypeId == eventTicketTypeId && x.Status == ReservationStatus.Confirmed, ct);
         if (ticketsSold)
             throw new InvalidOperationException("Cannot delete event ticket type with tickets sold.");
-        
+
         _db.EventTicketTypes.Remove(eventTicket);
+    }
+
+    public async Task<PagedResult<EventTicketTypeDto>> GetAllTickets(PageQuery query, CancellationToken ct)
+    {
+        //the querying is currently not implemented 
+        //but the pattern is there. 
+        // the important part is paging
+
+        //todo in reals we would cache the heck out of this. 
+
+        var from = query.From ?? DateTimeOffset.UtcNow;
+        var to = query.To;
+
+        var tickets = _db.EventTicketTypes.AsNoTracking()
+            .Select(x => new EventTicketTypeDto
+            {
+                Id = x.Id,
+                EventId = x.EventId,
+                Capacity = x.Capacity,
+                Sold = x.Sold,
+                Name = x.Name,
+                Price = x.Price
+            });
+
+        var total = await tickets.CountAsync(ct); //get the total items before paging.
+
+        var page = query.Page <= 0 ? 1 : query.Page;
+        var size = query.PageSize <= 0 ? 20 : Math.Min(query.PageSize, 100);
+        var skip = (page - 1) * size;
+
+        var result = await tickets.Skip(skip).Take(size).ToListAsync(ct);
+        return new PagedResult<EventTicketTypeDto>(result, total);
     }
 }

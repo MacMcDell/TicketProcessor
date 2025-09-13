@@ -10,7 +10,6 @@ public interface IVenueRepository : IBasicLookup
     Task UpdateAsync(VenueDto existingVenue, CancellationToken ct);
     Task DeleteAsync(Guid id, CancellationToken ct);
     Task<List<VenueDto>> GetVenuesAsync(CancellationToken ct);
-
 }
 
 public interface IBasicLookup

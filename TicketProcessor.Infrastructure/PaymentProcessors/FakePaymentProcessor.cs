@@ -11,14 +11,15 @@ public class FakePaymentProcessor : IPaymentGateway
     {
         _client = client;
     }
+
     public async Task<string> ChargeAsync(PaymentProcessorRequestDto payload, CancellationToken ct)
     {
         using var res = await _client.PostAsJsonAsync("https://httpbin.org/post", payload, ct);
         if (!res.IsSuccessStatusCode)
             throw new InvalidOperationException($"Payment failed: {(int)res.StatusCode}");
-        
+
         var json = await res.Content.ReadAsStringAsync(ct);
-        
+
         return json;
     }
 }
